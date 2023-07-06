@@ -1,2 +1,0 @@
-# Eddypro-ec-testing
- 
