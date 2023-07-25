@@ -1,0 +1,2595 @@
+
+ *******************
+  Executing EddyPro 
+ *******************
+
+ Reading EddyPro project file: /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/ini/template.eddypro..
+ Done.
+ Retrieving file names from directory:
+  "/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/raw_data/"
+   and its sub-directories..
+  31 files found.
+  Retrieving timestamps from file names.. Done.
+ Done.
+ Reading alternative metadata file: "/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/ini/lcreek.metadata"..
+  Warning(85)> Implausible roughness length value detected.
+  Warning(85)> Roughness length  defaulted to 0.15 times the canopy height,
+  Warning(85)> or to 1.0mm if canopy height is zero.
+ Done.
+  Warning(95)> The selected "w-boost" correction is not applicable
+  Warning(95)> to data collected with selected sonic anemometer.
+  Warning(95)> Continuing without applying "w-boost" correction.
+ Reading external biomet file(s) from:
+  /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/
+ Done.
+ Interpreting biomet data..
+  Number of variables:      9
+  Number of records:     1440
+  Inferred time-step:       1 min
+ Done.
+ Arranging files in chronological order.. Done.
+ Creating master time series.. Done.
+ Start raw data processing: 0:00:00.000  
+ Processing time period:
+  Start: 2020-06-26 07:30
+    End: 2020-06-27 23:30
+  Total number of flux averaging periods: 80
+
+
+ 2023-07-24 16:14:13.987: processing new flux averaging period
+ From: 2020-06-26 07:30
+   To: 2020-06-26 08:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_0730.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.140  
+
+
+ 2023-07-24 16:14:15.127: processing new flux averaging period
+ From: 2020-06-26 08:00
+   To: 2020-06-26 08:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_0800.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.515  
+
+
+ 2023-07-24 16:14:16.642: processing new flux averaging period
+ From: 2020-06-26 08:30
+   To: 2020-06-26 09:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_0830.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.217  
+
+
+ 2023-07-24 16:14:17.859: processing new flux averaging period
+ From: 2020-06-26 09:00
+   To: 2020-06-26 09:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_0900.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.210  
+
+
+ 2023-07-24 16:14:19.069: processing new flux averaging period
+ From: 2020-06-26 09:30
+   To: 2020-06-26 10:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_0930.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.115  
+
+
+ 2023-07-24 16:14:20.184: processing new flux averaging period
+ From: 2020-06-26 10:00
+   To: 2020-06-26 10:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1000.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.601  
+
+
+ 2023-07-24 16:14:21.785: processing new flux averaging period
+ From: 2020-06-26 10:30
+   To: 2020-06-26 11:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1030.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.500  
+
+
+ 2023-07-24 16:14:23.285: processing new flux averaging period
+ From: 2020-06-26 11:00
+   To: 2020-06-26 11:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1100.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.011  
+
+
+ 2023-07-24 16:14:24.296: processing new flux averaging period
+ From: 2020-06-26 11:30
+   To: 2020-06-26 12:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1130.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.408  
+
+
+ 2023-07-24 16:14:25.704: processing new flux averaging period
+ From: 2020-06-26 12:00
+   To: 2020-06-26 12:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1200.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.218  
+
+
+ 2023-07-24 16:14:26.922: processing new flux averaging period
+ From: 2020-06-26 12:30
+   To: 2020-06-26 13:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1230.dat
+  Number of valid records available for this period:  18000
+  Warning(58)> Available samples not enough for an averaging period.
+  Warning(58)> Skipping to next averaging period.
+ 
+   Flux averaging period processing time: 0:00:00.072  
+
+ 2023-07-24 16:14:26.994: processing new flux averaging period
+ From: 2020-06-26 13:00
+   To: 2020-06-26 13:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.002  
+
+ 2023-07-24 16:14:26.996: processing new flux averaging period
+ From: 2020-06-26 13:30
+   To: 2020-06-26 14:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.002  
+
+ 2023-07-24 16:14:26.998: processing new flux averaging period
+ From: 2020-06-26 14:00
+   To: 2020-06-26 14:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1400.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms..  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.045  
+
+
+ 2023-07-24 16:14:28.043: processing new flux averaging period
+ From: 2020-06-26 14:30
+   To: 2020-06-26 15:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1430.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.222  
+
+
+ 2023-07-24 16:14:29.265: processing new flux averaging period
+ From: 2020-06-26 15:00
+   To: 2020-06-26 15:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1500.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.119  
+
+
+ 2023-07-24 16:14:30.384: processing new flux averaging period
+ From: 2020-06-26 15:30
+   To: 2020-06-26 16:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1530.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.116  
+
+
+ 2023-07-24 16:14:31.500: processing new flux averaging period
+ From: 2020-06-26 16:00
+   To: 2020-06-26 16:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1600.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.303  
+
+
+ 2023-07-24 16:14:32.803: processing new flux averaging period
+ From: 2020-06-26 16:30
+   To: 2020-06-26 17:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1630.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.018  
+
+
+ 2023-07-24 16:14:33.821: processing new flux averaging period
+ From: 2020-06-26 17:00
+   To: 2020-06-26 17:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1700.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.017  
+
+
+ 2023-07-24 16:14:34.838: processing new flux averaging period
+ From: 2020-06-26 17:30
+   To: 2020-06-26 18:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1730.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.020  
+
+
+ 2023-07-24 16:14:35.858: processing new flux averaging period
+ From: 2020-06-26 18:00
+   To: 2020-06-26 18:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1800.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.019  
+
+
+ 2023-07-24 16:14:36.877: processing new flux averaging period
+ From: 2020-06-26 18:30
+   To: 2020-06-26 19:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1830.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.114  
+
+
+ 2023-07-24 16:14:37.991: processing new flux averaging period
+ From: 2020-06-26 19:00
+   To: 2020-06-26 19:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1900.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.013  
+
+
+ 2023-07-24 16:14:39.004: processing new flux averaging period
+ From: 2020-06-26 19:30
+   To: 2020-06-26 20:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_1930.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.021  
+
+
+ 2023-07-24 16:14:40.025: processing new flux averaging period
+ From: 2020-06-26 20:00
+   To: 2020-06-26 20:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2000.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.015  
+
+
+ 2023-07-24 16:14:41.040: processing new flux averaging period
+ From: 2020-06-26 20:30
+   To: 2020-06-26 21:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2030.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.207  
+
+
+ 2023-07-24 16:14:42.247: processing new flux averaging period
+ From: 2020-06-26 21:00
+   To: 2020-06-26 21:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2100.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.110  
+
+
+ 2023-07-24 16:14:43.357: processing new flux averaging period
+ From: 2020-06-26 21:30
+   To: 2020-06-26 22:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2130.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.021  
+
+
+ 2023-07-24 16:14:44.378: processing new flux averaging period
+ From: 2020-06-26 22:00
+   To: 2020-06-26 22:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2200.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.227  
+
+
+ 2023-07-24 16:14:45.605: processing new flux averaging period
+ From: 2020-06-26 22:30
+   To: 2020-06-26 23:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2230.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:00.988  
+
+
+ 2023-07-24 16:14:46.593: processing new flux averaging period
+ From: 2020-06-26 23:00
+   To: 2020-06-26 23:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2300.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.207  
+
+
+ 2023-07-24 16:14:47.800: processing new flux averaging period
+ From: 2020-06-26 23:30
+   To: 2020-06-27 00:00
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   30 biomet record(s) imported.
+  Done.
+  File(s): ../LostCreek_ts_data_2020_06_26_2330.dat
+  Number of valid records available for this period:  18000
+  Calculating statistics.. Done.
+  Calculating user statistics.. Done.
+  Raw level statistical screening..
+   Absolute limits test.. Done.
+   Spike detection/removal test.. Done.
+   Amplitude resolution and/or dropouts test.. Done.
+   Skewness & kurtosis test.. Done.
+  Done.
+  Despiking user set.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (2).. Done.
+  Re-calculating user statistics (2).. Done.
+  Cross-wind correction not requested or not applicable
+  Re-calculating statistics (3).. Done.
+  Re-calculating user statistics (3).. Done.
+  Re-calculating statistics (4).. Done.
+  Re-calculating user statistics (4).. Done.
+  Performing tilt correction by: double_rotation
+  Done.
+  Re-calculating statistics (5).. Done.
+  Re-calculating user statistics (5).. Done.
+  Compensating time-lags.. Done.
+  Verifying time series integrity.. Done.
+  Re-calculating statistics (6).. Done.
+  Re-calculating user statistics (6).. Done.
+  Performing stationarity test.. Done.
+  Detrending.. Done.
+  Detrending user set.. Done.
+  Re-calculating statistics (7).. Done.
+  Re-calculating user statistics (7).. Done.
+  Evaluating correlation differences with and without repeated values..  Done.
+  Evaluating R2 on CCFs with and without repeated values..  Done.
+  Estimating random uncertainty..
+  Done.
+  Re-calculating statistics (8).. Done.
+  Calculating (co)spectra..
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Writing requested full (co)spectra on output file..  Done.
+   Tapering timeseries.. Done.
+   FFT-ing.. Done.
+   Cospectral densities.. Done.
+   Binning spectra and cospectra.. Done.
+  Done.
+  Calculating auxiliary variables.. Done.
+  Calculating fluxes Level 0.. Done.
+   High-pass correction for anemometric fluxes. Method: Moncrieff et al. (2004)..
+   Done.
+   Low-pass correction for anemometric fluxes. Method: Moncrieff et al. (1997)..
+   Done.
+   High-pass correction for gas fluxes. Method: Moncrieff et al. (2004)
+   Done.
+   Low-pass correction for gas fluxes. Method: Moncrieff et al. (1997)
+   Done.
+  Calculating fluxes Level 1.. Done.
+  Calculating fluxes Level 2 and 3.. Done.
+  Calculating storage terms.. Done.
+  Calculating quality flags.. Done.
+  Flux averaging period processing time: 0:00:01.215  
+
+
+ 2023-07-24 16:14:49.015: processing new flux averaging period
+ From: 2020-06-27 00:00
+   To: 2020-06-27 00:30
+  Searching biomet data in file: 
+   /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/biomet/biomet_20200626.data
+   1 biomet record(s) imported.
+  Done.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.002  
+
+ 2023-07-24 16:14:49.017: processing new flux averaging period
+ From: 2020-06-27 00:30
+   To: 2020-06-27 01:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.018: processing new flux averaging period
+ From: 2020-06-27 01:00
+   To: 2020-06-27 01:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.019: processing new flux averaging period
+ From: 2020-06-27 01:30
+   To: 2020-06-27 02:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.020: processing new flux averaging period
+ From: 2020-06-27 02:00
+   To: 2020-06-27 02:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.021: processing new flux averaging period
+ From: 2020-06-27 02:30
+   To: 2020-06-27 03:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.000  
+
+ 2023-07-24 16:14:49.021: processing new flux averaging period
+ From: 2020-06-27 03:00
+   To: 2020-06-27 03:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.022: processing new flux averaging period
+ From: 2020-06-27 03:30
+   To: 2020-06-27 04:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.023: processing new flux averaging period
+ From: 2020-06-27 04:00
+   To: 2020-06-27 04:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.024: processing new flux averaging period
+ From: 2020-06-27 04:30
+   To: 2020-06-27 05:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.025: processing new flux averaging period
+ From: 2020-06-27 05:00
+   To: 2020-06-27 05:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.026: processing new flux averaging period
+ From: 2020-06-27 05:30
+   To: 2020-06-27 06:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.027: processing new flux averaging period
+ From: 2020-06-27 06:00
+   To: 2020-06-27 06:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.028: processing new flux averaging period
+ From: 2020-06-27 06:30
+   To: 2020-06-27 07:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.029: processing new flux averaging period
+ From: 2020-06-27 07:00
+   To: 2020-06-27 07:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.000  
+
+ 2023-07-24 16:14:49.029: processing new flux averaging period
+ From: 2020-06-27 07:30
+   To: 2020-06-27 08:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.030: processing new flux averaging period
+ From: 2020-06-27 08:00
+   To: 2020-06-27 08:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.031: processing new flux averaging period
+ From: 2020-06-27 08:30
+   To: 2020-06-27 09:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.032: processing new flux averaging period
+ From: 2020-06-27 09:00
+   To: 2020-06-27 09:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.033: processing new flux averaging period
+ From: 2020-06-27 09:30
+   To: 2020-06-27 10:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.034: processing new flux averaging period
+ From: 2020-06-27 10:00
+   To: 2020-06-27 10:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.035: processing new flux averaging period
+ From: 2020-06-27 10:30
+   To: 2020-06-27 11:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.036: processing new flux averaging period
+ From: 2020-06-27 11:00
+   To: 2020-06-27 11:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.037: processing new flux averaging period
+ From: 2020-06-27 11:30
+   To: 2020-06-27 12:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.038: processing new flux averaging period
+ From: 2020-06-27 12:00
+   To: 2020-06-27 12:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.000  
+
+ 2023-07-24 16:14:49.038: processing new flux averaging period
+ From: 2020-06-27 12:30
+   To: 2020-06-27 13:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.039: processing new flux averaging period
+ From: 2020-06-27 13:00
+   To: 2020-06-27 13:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.040: processing new flux averaging period
+ From: 2020-06-27 13:30
+   To: 2020-06-27 14:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.041: processing new flux averaging period
+ From: 2020-06-27 14:00
+   To: 2020-06-27 14:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.042: processing new flux averaging period
+ From: 2020-06-27 14:30
+   To: 2020-06-27 15:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.043: processing new flux averaging period
+ From: 2020-06-27 15:00
+   To: 2020-06-27 15:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.044: processing new flux averaging period
+ From: 2020-06-27 15:30
+   To: 2020-06-27 16:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.045: processing new flux averaging period
+ From: 2020-06-27 16:00
+   To: 2020-06-27 16:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.046: processing new flux averaging period
+ From: 2020-06-27 16:30
+   To: 2020-06-27 17:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.000  
+
+ 2023-07-24 16:14:49.047: processing new flux averaging period
+ From: 2020-06-27 17:00
+   To: 2020-06-27 17:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.047: processing new flux averaging period
+ From: 2020-06-27 17:30
+   To: 2020-06-27 18:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.048: processing new flux averaging period
+ From: 2020-06-27 18:00
+   To: 2020-06-27 18:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.049: processing new flux averaging period
+ From: 2020-06-27 18:30
+   To: 2020-06-27 19:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.050: processing new flux averaging period
+ From: 2020-06-27 19:00
+   To: 2020-06-27 19:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.051: processing new flux averaging period
+ From: 2020-06-27 19:30
+   To: 2020-06-27 20:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.052: processing new flux averaging period
+ From: 2020-06-27 20:00
+   To: 2020-06-27 20:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.053: processing new flux averaging period
+ From: 2020-06-27 20:30
+   To: 2020-06-27 21:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.054: processing new flux averaging period
+ From: 2020-06-27 21:00
+   To: 2020-06-27 21:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.055: processing new flux averaging period
+ From: 2020-06-27 21:30
+   To: 2020-06-27 22:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.000  
+
+ 2023-07-24 16:14:49.055: processing new flux averaging period
+ From: 2020-06-27 22:00
+   To: 2020-06-27 22:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.056: processing new flux averaging period
+ From: 2020-06-27 22:30
+   To: 2020-06-27 23:00
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ 2023-07-24 16:14:49.057: processing new flux averaging period
+ From: 2020-06-27 23:00
+   To: 2020-06-27 23:30
+   Warning(72)> No valid biomet record found for this period.
+   Warning(53)> No raw data file relevant to current averaging period was found.
+   Warning(53)> Skipping to next averaging period.
+   Flux averaging period processing time: 0:00:00.001  
+
+ Raw data processing terminated. Creating continuous datasets if necessary..
+  Closing Full Output file.. Done.
+  Closing FLUXNET output file.. Done.
+  Closing Metadata file.. Done.
+  Creating Level 1 Statistics dataset.. Done.
+  Creating Level 1 Statistics dataset for user variables.. Done.
+  Creating Biomet dataset.. Done.
+ Done.
+ FLUXNET file path: /Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/output/eddypro_template_fluxnet_2023-07-24T161413_adv.csv
+
+ ****************************************************
+ Program EddyPro executed gracefully.
+ Check results in the selected output directory.     
+ ****************************************************

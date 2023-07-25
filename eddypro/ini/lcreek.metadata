@@ -257,10 +257,10 @@ instr_3_vpath_length=1.0000
 [Project]
 creation_date=2014-09-15T10:57:27
 end_date=
-file_name=/Users/alex/Documents/Work/UWyo/2023 Summer/Fluxcourse/Project/eddypro_config_files/Lost-Creek-template/lcreek.metadata
+file_name=/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/ini/lcreek.metadata
 id=
 ini_version=3.2.2
-last_change_date=2023-06-28T14:58:11
+last_change_date=2023-07-24T15:05:17
 start_date=
 sw_version=7.0.9
 title=
@@ -281,5 +281,5 @@ station_name=
 
 [Timing]
 acquisition_frequency=10.000
-file_duration=1440
+file_duration=30
 pc_time_settings=local
