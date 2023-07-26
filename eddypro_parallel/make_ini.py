@@ -1,3 +1,9 @@
+"""
+A script to configure .eddypro INI files in bulk and to prep them for paralle processing
+Author: Alex Fox
+Created: July 2023
+"""
+
 import configparser
 from pathlib import Path
 import multiprocessing
@@ -170,23 +176,22 @@ def configure_parallel_workers(
 
     return
 
-
-
 if __name__ == '__main__':
-    project_dir = Path('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro')
+    project_dir = Path('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro_parallel')
     reference_ini_fn = project_dir/'ini/template.eddypro'
     base_eddypro_fn = reference_ini_fn.parent / 'base.eddypro'
     metadata_fn = project_dir / 'ini/lcreek.metadata'
     out_path = project_dir/'output'
-    data_dir = Path('/Users/alex/Documents/Data/Platinum_EC/LostCreek')
+    raw_data_dir = Path('/Users/alex/Documents/Data/Platinum_EC/LostCreek/raw_data')
+    biom_data_dir = Path('/Users/alex/Documents/Data/Platinum_EC/LostCreek/biomet')
     
     # modify template
     modify_eddypro(
         ref_fn=reference_ini_fn,
         out_fn=base_eddypro_fn,
         FluxCorrection_SpectralAnalysis_General=dict(ex_file=''),
-        Project=dict(last_change_date='', proj_file=metadata_fn, out_path=out_path, biom_dir=data_dir/'biomet'),
-        RawProcess_General=dict(data_path=data_dir/'raw_data')
+        Project=dict(last_change_date='', proj_file=metadata_fn, out_path=out_path, biom_dir=biom_data_dir),
+        RawProcess_General=dict(data_path=raw_data_dir)
     )
 
     configure_parallel_workers(
