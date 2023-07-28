@@ -97,7 +97,7 @@ hf_correct_ghg_ba=1
 hf_correct_ghg_zoh=1
 hf_meth=1
 ini_version=4.5.0
-last_change_date=2023-07-26T14:28:52
+last_change_date=2023-07-26T14:44:43
 lf_meth=1
 make_dataset=1
 master_sonic=csat3_1
@@ -352,18 +352,18 @@ test_sr=1
 test_tl=0
 
 [RawProcess_TiltCorrection_Settings]
-pf_end_date=2020-07-22
-pf_end_time=23:30
-pf_file=/Users/alex/Documents/Work/UWyo/2023 Summer/Fluxcourse/Project/eddypro_output/lostcreek/Planar Fit Single-Sector/eddypro_template_planar_fit_2023-06-28T230545_adv.txt
+pf_end_date=2020-07-23
+pf_end_time=20:30
+pf_file=Null
 pf_fix=0
 pf_min_num_per_sec=0
-pf_mode=0
+pf_mode=1
 pf_north_offset=0
-pf_start_date=2020-06-21
-pf_start_time=Null
-pf_subset=0
-pf_u_min=-0.001
-pf_w_max=0.099
+pf_start_date=2020-03-03
+pf_start_time=05:00
+pf_subset=1
+pf_u_min=10.000
+pf_w_max=0.100
 
 [RawProcess_TimelagOptimization_Settings]
 to_ch4_max_lag=-1000.1
