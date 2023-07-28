@@ -1,5 +1,2 @@
-eddypro/output/*
-eddypro/raw_data/*
-eddypro/biomet/*
-eddypro/tmp/*
-eddypro/stdout/*
+**/output
+**/tmp
