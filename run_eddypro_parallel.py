@@ -32,21 +32,13 @@ def call(args: tuple[str, str, str | PathLike[str]]) -> None:
     '''call eddypro_rp and eddypro_fcc once, and write output to .stdout file'''
     rp_call, fcc_call, stdout_file = args
     with open(stdout_file, 'wb') as f:
-        try:
-            stdout = subprocess.check_output(rp_call, shell=True)
-            print(f'{stdout_file.stem} completed eddypro_rp gracefully')
-        except subprocess.CalledProcessError as e:
-            print(f'{stdout_file.stem} completed eddypro_rp with errors')
-            stdout = e.output
-        f.write(stdout)
+        f.write(bytes(rp_call + '\n', 'utf-8'))
+        process = subprocess.run(rp_call, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        f.write(process.stdout)
 
-        try:
-            stdout = subprocess.check_output(fcc_call, shell=True)
-            print(f'{stdout_file.stem} completed eddypro_fcc gracefully')
-        except subprocess.CalledProcessError as e:
-            stdout = e.output
-            print(f'{stdout_file.stem} completed eddypro_fcc with errors')
-        f.write(stdout)
+        f.write(bytes(fcc_call + '\n', 'utf-8'))
+        process = subprocess.run(fcc_call, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        f.write(process.stdout)
     
     return
 
@@ -119,7 +111,11 @@ def make_eddypro_calls(
         for PROJ_FILE in PROJ_FILES
     ]
 
-    return eddypro_rp_calls, eddypro_fcc_calls, PROJ_FILES
+    stdout_files = [
+        environment / 'stdout' / f'{PROJ_FILE.stem}.stdout' for PROJ_FILE in PROJ_FILES
+    ]
+
+    return eddypro_rp_calls, eddypro_fcc_calls, stdout_files
 
 if __name__ == '__main__':
 
@@ -128,7 +124,7 @@ if __name__ == '__main__':
     eddypro_rp = environment / 'bin/eddypro_rp'
     eddypro_fcc = environment / 'bin/eddypro_fcc'
 
-    eddypro_rp_calls, eddypro_fcc_calls, project_files = make_eddypro_calls(
+    eddypro_rp_calls, eddypro_fcc_calls, stdout_files = make_eddypro_calls(
         environment=environment,
         clean_children=True,
         PROJ_FILES=PROJ_FILES,

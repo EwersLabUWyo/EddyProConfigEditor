@@ -21,7 +21,6 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         self._start_set = False
         self._start_set = False
 
-
     def set_StartDate(
         self,
         start: str | datetime.datetime | None = None, 
@@ -333,7 +332,6 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
         return settings_dict
 
-
     def set_TimeLagCompensations(
             self, 
             method: Literal['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization'] | int = 2, 
@@ -368,9 +366,10 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 for option, value in to_settings.items():
                     self.set(section='RawProcess_TimelagOptimization_Settings', option=option, value=str(value))
         
-    def to_eddypro(self, ini_file: str | PathLike[str]):
-        "write to a .eddypro file"
+    def to_eddypro(self, ini_file: str | PathLike[str], out_path: str | PathLike[str]):
+        "write to a .eddypro file. output: the path to the output directory for eddypro RESULTS"
         self.set(section='Project', option='file_name', value=str(ini_file))
+        self.set(section='Project', option='out_path', value=str(out_path))
         with open(ini_file, 'w') as configfile:
             configfile.write(';EDDYPRO_PROCESSING\n')  # header line
             self.write(fp=configfile, space_around_delimiters=False)
@@ -378,6 +377,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
     def to_eddypro_parallel(
         self,
         ini_dir: str | PathLike[str],
+        out_path: str | PathLike[str],
         metadata_fn: str | PathLike[str] | None = None,
         num_workers: int | None = None,
         file_duration: int | None = None,
@@ -389,6 +389,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         Note that some processing methods are not compatible "out-of-the-box" with paralle processing: some methods like the planar fit correction and ensemble spectral corrections will need the results from a previous, longer-term eddypro run to function effectively.
 
         ini_dir: the directory to output configured .eddypro files to. Does not have to exist.
+        out_path: the path to direct eddypro to write results to.
         metadata_fn: path to a static .metadata file for this project. Must be provided if file_duration is None.
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
@@ -405,11 +406,11 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             num_workers = max(multiprocessing.cpu_count() - 1, 1)
 
         # split up file processing dates
-        start = str(datetime.strptime(
+        start = str(datetime.datetime.strptime(
             f"{self.get(section='Project', option='pr_start_date')} {self.get(section='Project', option='pr_start_time')}", 
             r'%Y-%m-%d %H:%M'
         ))
-        end = str(datetime.strptime(
+        end = str(datetime.datetime.strptime(
             f"{self.get(section='Project', option='pr_end_date')} {self.get(section='Project', option='pr_end_time')}" , 
             r'%Y-%m-%d %H:%M'
         ))
@@ -430,17 +431,20 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         ini_fns = [ini_dir / f'{project_id}.eddypro' for project_id in project_ids]
 
         # save original settings
-        file_name = self.get(section='Project', option='file_name')
+        old_file_name = self.get(section='Project', option='file_name')
+        old_out_path = self.get(section='Project', option='out_path')
         pr_start_date = self.get(section='Project', option='pr_start_date')
         pr_end_date = self.get(section='Project', option='pr_end_date')
         pr_start_time = self.get(section='Project', option='pr_start_time')
         pr_end_time = self.get(section='Project', option='pr_end_time')
         project_id = self.get(section='Project', option='project_id')
 
+
         # write new files
         if not os.path.isdir(Path(ini_dir)):
             Path.mkdir(Path(ini_dir))
         for i, fn in enumerate(ini_fns):
+            self.set(section='Project', option='out_path', value=str(out_path))
             self.set(section='Project', option='file_name', value=str(fn))
             self.set(section='Project', option='pr_start_date', value=str(job_start_dates[i]))
             self.set(section='Project', option='pr_end_date', value=str(job_end_dates[i]))
@@ -453,7 +457,8 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.write(fp=configfile, space_around_delimiters=False)
         
         # revert to original
-        self.set(section='Project', option='file_name', value=file_name)
+        self.set(section='Project', option='file_name', value=old_file_name)
+        self.set(section='Project', option='out_path', value=old_out_path)
         self.set(section='Project', option='pr_start_date', value=pr_start_date)
         self.set(section='Project', option='pr_end_date', value=pr_end_date)
         self.set(section='Project', option='pr_start_time', value=pr_start_time)
