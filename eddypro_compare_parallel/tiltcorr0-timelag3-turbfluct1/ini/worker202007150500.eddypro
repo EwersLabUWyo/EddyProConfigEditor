@@ -2,7 +2,7 @@
 [FluxCorrection_SpectralAnalysis_General]
 add_sonic_lptf=1
 ex_dir=
-ex_file=
+ex_file=/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro_compare_parallel/tiltcorr0-timelag3-turbfluct1/output/eddypro_worker202007150500_fluxnet_2023-07-28T133455_adv.csv
 horst_lens=2
 sa_bin_spectra=
 sa_ch4_g1_start=1

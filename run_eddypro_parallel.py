@@ -8,6 +8,8 @@ import multiprocessing
 import subprocess
 from pathlib import Path
 import platform
+from datetime import datetime
+from time import sleep
 
 from collections.abc import Sequence, Generator
 from os import PathLike
@@ -32,13 +34,19 @@ def call(args: tuple[str, str, str | PathLike[str]]) -> None:
     '''call eddypro_rp and eddypro_fcc once, and write output to .stdout file'''
     rp_call, fcc_call, stdout_file = args
     with open(stdout_file, 'wb') as f:
+
         f.write(bytes(rp_call + '\n', 'utf-8'))
+        f.write(bytes(str(datetime.now()) + '\n', 'utf-8'))
         process = subprocess.run(rp_call, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         f.write(process.stdout)
+        f.write(bytes(str(datetime.now()) + '\n', 'utf-8'))
 
         f.write(bytes(fcc_call + '\n', 'utf-8'))
+        f.write(bytes(str(datetime.now()) + '\n', 'utf-8'))
         process = subprocess.run(fcc_call, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         f.write(process.stdout)
+        f.write(bytes(str(datetime.now()) + '\n', 'utf-8'))
+
     
     return
 
