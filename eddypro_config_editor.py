@@ -1,6 +1,6 @@
 import configparser
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Self
 import datetime
 from os import PathLike
 import os
@@ -8,8 +8,104 @@ from collections.abc import Sequence
 import multiprocessing
 from math import ceil
 import warnings
+import tempfile
+from time import sleep
+import sys
+from copy import copy
 
 from pandas import date_range, Timedelta, DataFrame
+
+"""
+Settings to add
+** = Priority: settings that need to be automated.
+E.g. raw file format probably doesn't need to be automated
+
+
+Project creation
+----------------------------------------
+* Project name
+* Raw file format
+* Metadata file location
+* Dynamic metadata file location/presence
+** Biomet data
+
+Basic Settings
+----------------------------------------
+* Raw data directory
+** DONE Processing dates
+* Raw file name format
+** DONE (sort of, in to_eddypro methods) output directory
+* DONE missing samples allowance
+* DONE flux averaging interval
+* DONE north reference
+* Items for flux computation:
+    * master anemometer/diagnostics/fast-temperature-reading
+    * CO2/H2O/CH4/Gas4/CelTemp/CellPress/etc
+    ** Flags
+    ** Wind filter
+
+Advanced Settings
+----------------------------------------
+    Processing Options
+    ------------------------------------
+    * DONE WS offsets
+    * Fix w boost bug
+    * AoA correction
+    ** DONE Axis rotations for tilt correction
+    ** DONE turbulent fluctuation
+    ** DONE time lag compensations
+    ** DONE WPL Corrections
+        ** DONE Compensate density fluctuations
+        ** DONE Burba correction for 7500
+    * Quality check
+    * Foodprint estimation
+
+    Statistical Analysis
+    ------------------------------------
+    ** VM97
+        ** Spike count/removal
+        ** Ampl. res
+        ** Dropouts
+        ** Abs lims
+        ** Skew + Kurt
+        ** Discont.
+        ** Time lags
+        ** AoA
+        ** Steadiness of Hor. Wind
+    ** Random uncertainty estimates
+
+    Spectral Corrections
+    ------------------------------------
+    ** Spectra and Cospectra Calculation
+    ** Removal of HF noise
+    ** Spectra/Cospectra QA/QC
+    * Quality test filtering
+    ** Spectral correction options
+        ** Low-freq
+        ** High-freq
+        ** Assessment
+        ** Fratini et al 2012
+    
+    Output Files
+    ------------------------------------
+    * Results files
+    * Fluxnet output settings
+    * Spectra and cospectra output
+    * Processed raw data outputs
+"""
+
+def compare_configs(df1: DataFrame, df2: DataFrame):
+    """compare differences between two configs"""
+    df1_new = df1.loc[df1['Value'] != df2['Value'], ['Section', 'Option', 'Value']]
+    df2_new = df2.loc[df1['Value'] != df2['Value'], ['Section', 'Option', 'Value']]
+    name1 = df1['Name'].values[0]
+    name2 = df2['Name'].values[0]
+    df_compare = (
+        df1_new
+        .merge(df2_new, on=['Section', 'Option'], suffixes=['_'+name1, '_'+name2])
+        .sort_values(['Section', 'Option'])
+    )
+    return df_compare
 
 class eddypro_ConfigParser(configparser.ConfigParser):
     '''a child class of configparser.ConfigParser added methods to modify eddypro-specific settings'''
@@ -19,8 +115,9 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         self.read(reference_ini)
 
         self._start_set = False
-        self._start_set = False
+        self._end_set = False
 
+    # --------------------Basic Settings Page-----------------------
     def set_StartDate(
         self,
         start: str | datetime.datetime | None = None, 
@@ -35,7 +132,11 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             self.set(section='Project', option='pr_start_date', value=str(pr_start_date))
             self.set(section='Project', option='pr_start_time', value=str(pr_start_time))
 
-        self._start_set = True
+        self._start_set = True 
+    def get_StartDate(self) ->datetime.datetime:
+        start_date = self.get(section='Project', option='pr_start_date')
+        start_time = self.get(section='Project', option='pr_start_time')
+        return datetime.datetime.strptime(f'{start_date} {start_time}', r'%Y-%m-%d %H:%M')
     
     def set_EndDate(
         self,
@@ -52,7 +153,11 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             self.set(section='Project', option='pr_end_time', value=str(pr_end_time))
 
         self._end_set = True
-        
+    def get_EndDate(self) -> datetime.datetime:
+        end_date = self.get(section='Project', option='pr_end_date')
+        end_time = self.get(section='Project', option='pr_end_time')
+        return datetime.datetime.strptime(f'{end_date} {end_time}', r'%Y-%m-%d %H:%M')
+    
     def set_DateRange(
         self,
         start: str | datetime.datetime | None = None, 
@@ -61,16 +166,24 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         """format yyyy-mm-dd HH:MM for strings"""
         self.set_start_date(start)
         self.set_end_date(end)
-
+    def get_DateRange(self) -> dict:
+        start = self.get_StartDate()
+        end = self.get_EndDate()
+        return dict(start=start, end=end)
+        
     def set_MissingSamplesAllowance(self, pct: int):
         # pct: value from 0 to 40%
         assert pct >= 0 and pct <= 40
         self.set(section='RawProcess_Settings', option='max_lack', value=str(int(pct)))
+    def get_MissingSamplesAllowance(self) -> int:
+        return int(self.get(section='RawProcess_Settings', option='max_lack'))
     
     def set_FluxAveragingInterval(self, minutes: int):
         """minutes: how long to set the averaging interval to. If 0, use the file as-is"""
         assert minutes >= 0 and minutes <= 9999, 'Must have 0 <= minutes <= 9999'
         self.set(section='RawProcess_Settings', option='avrg_len', value=str(int(minutes)))
+    def get_FluxAveragingInterval(self) -> int:
+        return self.get(section='RawProcess_Settings', option='avrg_len')
     
     def set_NorthReference(
         self, 
@@ -97,20 +210,39 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             else:
                 declination_date = declination_date.strftime(r'%Y-%m-%d')
             self.set(section='RawProcess_General', option='dec_date', value=str(declination_date))
+    def get_NorthReference(self) -> dict:
+        use_geo_north = self.get(section='RawProcess_General', option='use_geo_north')
+        if use_geo_north: use_geo_north = 'geo'
+        else: use_geo_north = 'mag'
 
+        mag_dec = float(self.get(section='RawProcess_General', option='mag_dec'))
+        if use_geo_north == 'mag': mag_dec = None
+
+        dec_date = datetime.datetime.strptime(self.get(section='RawProcess_General', option='dec_date'), r'%Y-%m-%d')
+        if use_geo_north == 'mag': dec_date = None
+
+        return dict(method=use_geo_north, magnetic_declination=mag_dec, declination_date=dec_date)
+    
     def set_ProjectId(self, project_id: str):
         assert ' ' not in project_id and '_' not in project_id, 'project id must not contain spaces or underscores.'
         self.set(section='Project', option='project_id', value=str(project_id))
+    def get_ProjectId(self) -> str:
+        return self.get(section='Project', option='project_id')
     
-    def set_WindSpeedMeasurementOffsets(self, u: float | None = None, v: float | None = None, w: float | None = None):
+    # --------------------Advanced Settings Page-----------------------
+    # --------Processing Options---------
+    def set_WindSpeedMeasurementOffsets(self, u: float = 0, v: float = 0, w: float = 0):
         assert max(u**2, v**2, w**2) <= 100, 'Windspeed measurement offsets cannot exceed ±10m/s'
-        if u is not None:
-            self.set(section='RawProcess_Settings', option='u_offset', value=str(u))
-        if v is not None:
-            self.set(section='RawProcess_Settings', option='v_offset', value=str(v))
-        if w is not None:
-            self.set(section='RawProcess_Settings', option='w_offset', value=str(w))
-        
+        self.set(section='RawProcess_Settings', option='u_offset', value=str(u))
+        self.set(section='RawProcess_Settings', option='v_offset', value=str(v))
+        self.set(section='RawProcess_Settings', option='w_offset', value=str(w))
+    def get_WindSpeedMeasurementOffsets(self) -> dict:
+        return dict(
+            u=float(self.get(section='RawProcess_Settings', option='u_offset')),
+            v=float(self.get(section='RawProcess_Settings', option='v_offset')),
+            w=float(self.get(section='RawProcess_Settings', option='w_offset'))
+        )
+    
     def configure_PlanarFitSettings(
         self,
         w_max: float,
@@ -129,7 +261,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         num_per_sector_min: the minimum number of valid datapoints for a sector to be computed. Default 0.
         fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
         north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
-        sectors: list of tuples of the form (exclude/keep, width). Where exclude/keep is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. If None (default), provide no sector information.
+        sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. If None (default), provide no sector information.
 
         Returns: a dictionary to provide to set_AxisRotationsForTiltCorrection
         """
@@ -142,10 +274,10 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 pf_start_date = start.strftime(r'%Y-%m-%d')
                 pf_start_time = start.strftime(r'%H:%M')
         else:
-            if not self._start_set:
-                warnings.warn(f"Warning: Using the start date and time provided by the original reference file: {pf_start_date} {pf_start_time}")
             pf_start_date = self.get(section='Project', option='pr_start_date')
             pf_start_time = self.get(section='Project', option='pr_start_time')
+            if not self._start_set:
+                warnings.warn(f"Warning: Using the start date and time provided by the original reference file: {pf_start_date} {pf_start_time}")
         if end is not None:
             if isinstance(end, str):
                     pf_end_date, pf_end_time = end.split(' ')
@@ -153,10 +285,10 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 pf_end_date = end.strftime(r'%Y-%m-%d')
                 pf_end_time = end.strftime(r'%H:%M')
         else:
-            if not self._start_set:
-                warnings.warn(f"Warning: Using the end date and time provided by the original reference file: {pf_end_date} {pf_end_time}")
             pf_end_date = self.get(section='Project', option='pr_end_date')
             pf_end_time = self.get(section='Project', option='pr_end_time')
+            if not self._start_set:
+                warnings.warn(f"Warning: Using the end date and time provided by the original reference file: {pf_end_date} {pf_end_time}")
 
         # simple settings
         assert u_min >= 0 and u_min <= 10, 'must have 0 <= u_min <= 10'
@@ -195,12 +327,11 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 settings_dict[f'pf_sector_{n}_width'] = str(width)
         
         return settings_dict
-
     def set_AxisRotationsForTiltCorrection(
             self, 
             method: Literal['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb'] | int,
             pf_file: str | PathLike[str] | None = None,
-            pf_settings_kwargs: dict | None = None,
+            configure_PlanarFitSettings_kwargs: dict | None = None,
         ):
         """
         method: one of 0 or "none" (no tilt correction), 1 or "double_rotations" (double rotations), 2 or "triple_rotations" (triple rotations), 3 or "planar_fit" (planar fit, Wilczak 2001), 4 or "planar_fit_nvb" (planar with with no velocity bias (van Dijk 2004)). one of pf_file or pf_settings_kwargs must be provided if method is a planar fit type.
@@ -217,19 +348,68 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
         # planar fit
         if method in [3, 4]:
-            assert bool(pf_file) != bool(pf_settings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
+            assert bool(pf_file) != bool(configure_PlanarFitSettings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
             if pf_file is not None:
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_file', value=str(pf_file))
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_mode', value=str(0))
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_subset', value=str(1))
-            elif pf_settings_kwargs is not None:
+            elif configure_PlanarFitSettings_kwargs is not None:
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_file', value='')
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_mode', value=str(1))
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_subset', value=str(1))
-                pf_settings = self.configure_PlanarFitSettings(**pf_settings_kwargs)
+                pf_settings = self.configure_PlanarFitSettings(**configure_PlanarFitSettings_kwargs)
                 for option, value in pf_settings.items():
                     self.set(section='RawProcess_TiltCorrection_Settings', option=option, value=str(value))
-            
+    def get_AxisRotationsForTiltCorrection(self) -> tuple[str, dict]:
+        methods = ['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb']
+        method = methods[int(self.get(section='RawProcess_Settings', option='rot_meth'))]
+
+        pf_config = dict()
+        # case that a manual configuration is provided
+        pf_config['pf_file'] = None
+        start_date = self.get(section='RawProcess_TiltCorrection_Settings', option='pf_start_date')
+        start_time = self.get(section='RawProcess_TiltCorrection_Settings', option='pf_start_time')
+        if not start_date: start_date = self.get(section='Project', option='pr_start_date')
+        if not start_time: start_time = self.get(section='Project', option='pr_start_time')
+        pf_config['start'] = start_date + ' ' + start_time
+        end_date = self.get(section='RawProcess_TiltCorrection_Settings', option='pf_end_date')
+        end_time = self.get(section='RawProcess_TiltCorrection_Settings', option='pf_end_time')
+        if not end_date: end_date = self.get(section='Project', option='pr_end_date')
+        if not end_time: end_time = self.get(section='Project', option='pr_end_time')
+        pf_config['end'] = end_date + ' ' + end_time
+
+        pf_config['u_min'] = float(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_u_min'))
+        pf_config['w_max'] = float(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_w_max'))
+        pf_config['num_per_sector_min'] = int(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_min_num_per_sec'))          
+        fixes = ['CW', 'CCW', 'double_rotations']
+        pf_config['fix_method'] = fixes[int(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_fix'))]
+        pf_config['north_offset'] = float(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_north_offset'))
+        
+        n = 1
+        sectors = []
+        while True:
+            try:
+                exclude = int(self.get(section='RawProcess_TiltCorrection_Settings', option=f'pf_sector_{n}_exclude'))
+                width = float(self.get(section='RawProcess_TiltCorrection_Settings', option=f'pf_sector_{n}_width'))
+                sectors.append((exclude, width))
+            except configparser.NoOptionError:
+                break
+            n += 1
+        pf_config['sectors'] = sectors
+        
+        # case that a file config is provided
+        manual_pf_config = int(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_mode'))
+        if not manual_pf_config:
+            for k in pf_config:
+                pf_config[k] = None
+            pf_config['pf_file'] = self.get(section='RawProcess_TiltCorrection_Settings', option='pf_file')
+        pf_config['pf_subset'] = int(self.get(section='RawProcess_TiltCorrection_Settings', option='pf_subset'))
+
+        if method in ['none', 'double_rotations', 'triple_rotations']:
+            pf_config = None
+        
+        return method, pf_config
+
     def set_TurbulentFluctuations(self, method: Literal['block', 'detrend', 'running_mean', 'exponential_running_mean'] | int = 0, time_const: float | None = None):
         '''time constant in seconds not required for block averaging (0) (default)'''
         method_dict = {'block':0, 'detrend':1, 'running_mean':2, 'exponential_running_mean':3}
@@ -365,11 +545,133 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 to_settings = self.configure_TimeLagAutoOpt(**autoopt_settings_kwargs)
                 for option, value in to_settings.items():
                     self.set(section='RawProcess_TimelagOptimization_Settings', option=option, value=str(value))
+    
+    def _set_burba_coeffs(self, name, estimation_method, coeffs):
+        """helper method called by set_compensationOfDensityFluctuations"""
+        if estimation_method == 'multiple':
+            options=[f'm_{name}_{i}' for i in [1, 2, 3, 4]]
+            assert len(coeffs) == 2, 'Multiple regression coefficients must be a sequence of length four, representing (offset, Ta_gain, Rg_gain, U_gain)'
+            for option, value in zip(options, coeffs):
+                self.set(section='RawProcess_Settings', option=option, value=str(value))
+        elif estimation_method == 'simple':
+            options=[f'l_{name}_{i}' for i in ['gain', 'offset']]
+            assert len(coeffs) == 2, 'Simple regression coefficients must be a sequence of length two, representing (gain, offset)'
+            for option, value in zip(options, coeffs):
+                self.set(section='RawProcess_Settings', option=option, value=str(value))
+
+    def set_compensationOfDensityFluctuations(
+            self,
+            enable: bool = True,
+            burba_correction: bool = False,
+            estimation_method: Literal['simple', 'multiple'] = 'simple',
+            day_bot: Sequence | Literal['keep', 'default'] = 'default',
+            day_top: Sequence | Literal['keep', 'default'] = 'default',
+            day_spar: Sequence | Literal['keep', 'default'] = 'default',
+            night_bot: Sequence | Literal['keep', 'default'] = 'default',
+            night_top: Sequence | Literal['keep', 'default'] = 'default',
+            night_spar: Sequence | Literal['keep', 'default'] = 'default',
+    ):
+        """how o correct for density fluctuations. Default mode is to only correct for bulk density fluctuations.
         
-    def to_eddypro(self, ini_file: str | PathLike[str], out_path: str | PathLike[str]):
-        "write to a .eddypro file. output: the path to the output directory for eddypro RESULTS"
+        enable: If true, correct for density fluctuations with the WPL term (default)
+        burba_correction: If true, add instrument sensible heat components. LI-7500 only. Default False.
+        estimation_method: one of 'simple' or 'multiple'. Whether to use simple linear regression or Multiple linear regression.
+        day/night_bot/top/spar: Either (a) 'default' (default) (b) 'keep', or (c) a sequence of regression coefficients for the burba correction for the temperature of the bottom, top, and spar of the LI7500. 
+            If 'simple' estimation was selected, then this is a sequence of length two, representing (gain, offset) for the equation
+                T_instrument = gain*Ta + offset
+            If 'multiple' estimation was selected, then this is a sequence of length 4, repressinting (offset, Ta_coeff, Rg_coeff, U_coeff) for the equation
+                T_instr - Ta = offset + Ta_coeff*Ta + Rg_coeff*Rg + U_coeff*U
+                where Ta is air temperature, T_instr is instrument part temperature, Rg is global incoming SW radiation, and U is mean windspeed
+            
+            If 'default' (default), then revert to default eddypro coefficients.
+            If 'keep', then do not change regression coefficients in the file
+        """
+
+        if not enable:
+            self.set(section='Project', option='wpl_meth', value='0')
+            if burba_correction:
+                warnings.warn('WARNING: burba_correction has no effect when density fluctuation compensation is disabled')
+        else:
+            self.set(section='Project', option='wpl_meth', value='1')
+        
+        if not burba_correction:
+            self.set(section='RawProcess_Settings', option='bu_corr', value='0')
+            if (
+                isinstance(day_bot, Sequence) 
+                or isinstance(day_top, Sequence) 
+                or isinstance(day_spar, Sequence) 
+                or isinstance(night_bot, Sequence) 
+                or isinstance(night_top, Sequence) 
+                or isinstance(night_spar, Sequence)
+                or not enable
+            ):
+                warnings.warn('WARNING: burba regression coefficients have no effect when burba correction is disabled or density corrections are disabled.')
+        else:
+            assert estimation_method in ['simple', 'multiple'], 'estimation method must be one of "simple (0)", "multiple (1)"'
+            self.set(section='RawProcess_Settings', option='bu_corr', value='1')
+        
+        if estimation_method == 'simple':
+            # daytime
+            if day_bot == 'default': self._set_burba_coeffs('day_bot', 'simple', (0.944, 2.57))
+            elif day_bot == 'keep': pass
+            else: self._set_burba_coeffs('day_bot', 'simple', day_bot)
+
+            if day_top == 'default': self._set_burba_coeffs('day_top', 'simple', (1.005, 0.24))
+            elif day_top == 'keep': pass
+            else: self._set_burba_coeffs('day_top', 'simple', day_top)
+            
+            if day_spar == 'default': self._set_burba_coeffs('day_spar', 'simple', (1.010, 0.36))
+            elif day_spar == 'keep': pass
+            else: self._set_burba_coeffs('day_spar', 'simple', day_spar)
+
+            # nighttime
+            if night_bot == 'default': self._set_burba_coeffs('night_bot', 'simple', (0.883, 2.17))
+            elif night_bot == 'keep': pass
+            else: self._set_burba_coeffs('night_bot', 'simple', night_bot)
+
+            if night_top == 'default': self._set_burba_coeffs('night_top', 'simple', (1.008, -0.41))
+            elif night_top == 'keep': pass
+            else: self._set_burba_coeffs('night_top', 'simple', night_top)
+            
+            if night_spar == 'default': self._set_burba_coeffs('night_spar', 'simple', (1.010, -0.17))
+            elif night_spar == 'keep': pass
+            else: self._set_burba_coeffs('night_spar', 'simple', night_spar)
+
+        elif estimation_method == 'multiple':
+            # daytime
+            if day_bot == 'default': self._set_burba_coeffs('day_bot', 'multiple', (2.8, -0.0681, 0.0021, -0.334))
+            elif day_bot == 'keep': pass
+            else: self._set_burba_coeffs('day_bot', 'multiple', day_bot)
+
+            if day_top == 'default': self._set_burba_coeffs('day_top', 'multiple', (-0.1, -0.0044, 0.011, -0.022))
+            elif day_top == 'keep': pass
+            else: self._set_burba_coeffs('day_top', 'multiple', day_top)
+            
+            if day_spar == 'default': self._set_burba_coeffs('day_spar', 'multiple', (0.3, -0.0007, 0.0006, -0.044))
+            elif day_spar == 'keep': pass
+            else: self._set_burba_coeffs('day_spar', 'multiple', day_spar)
+
+            # nighttime
+            if night_bot == 'default': self._set_burba_coeffs('night_bot', 'multiple', (0.5, -0.1160, 0.0087, -0.206))
+            elif night_bot == 'keep': pass
+            else: self._set_burba_coeffs('night_bot', 'multiple', night_bot)
+
+            if night_top == 'default': self._set_burba_coeffs('night_top', 'multiple', (-1.7, -0.0160, 0.0051, -0.029))
+            elif night_top == 'keep': pass
+            else: self._set_burba_coeffs('night_top', 'multiple', night_top)
+            
+            if night_spar == 'default': self._set_burba_coeffs('night_spar', 'multiple', (-2.1, -0.0200, 0.0070, 0.026))
+            elif night_spar == 'keep': pass
+            else: self._set_burba_coeffs('night_spar', 'multiple', night_spar)
+
+    def to_eddypro(self, ini_file: str | PathLike[str], out_path: str | PathLike[str] | Literal['keep'] = 'keep'):
+        """write to a .eddypro file.
+        ini_file: the file name to write to
+        out_path: the path for eddypro to output results to. If 'keep' (default), use the outpath already in the config file
+        """
         self.set(section='Project', option='file_name', value=str(ini_file))
-        self.set(section='Project', option='out_path', value=str(out_path))
+        if out_path != 'keep':
+            self.set(section='Project', option='out_path', value=str(out_path))
         with open(ini_file, 'w') as configfile:
             configfile.write(';EDDYPRO_PROCESSING\n')  # header line
             self.write(fp=configfile, space_around_delimiters=False)
@@ -383,6 +685,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         file_duration: int | None = None,
     ) -> None:
         """
+        writes to a set of .eddypro files split up into bite-size time chunks.
          .eddypro files, each handling a separate time chunk.
         all .eddypro files will be identical except in their project IDs, file names, and start/end dates.
         
@@ -475,8 +778,40 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 lines.append([section, option, value])
         df = DataFrame(lines, columns=['Section', 'Option', 'Value'])
         df = df.sort_values(['Section', 'Option'])
+        df['Name'] = Path(self.get(section='Project', option='file_name')).stem
 
         return df
 
+    def copy(self) -> Self:
+        """copies this config through a temporary file"""
+        tmp = tempfile.NamedTemporaryFile(mode='w', delete=False)
+        try:
+            tmp.write(';EDDYPRO_PROCESSING\n')  # header line
+            self.write(fp=tmp, space_around_delimiters=False)
+            tmp.close()
+
+            tmp = open(tmp.name, mode='r')
+            cls = self.__class__
+            new = self.__new__(cls)
+            new.__init__(tmp.name)
+            tmp.close()
+
+            os.remove(tmp.name)
+        except:
+            tmp.close()
+            os.remove(tmp.name)
+            raise
+
+        new._start_set = self._start_set
+        new._end_set = self._end_set
+
+        return new
+    
+    def __copy__(self):
+        return self.copy()
+
 if __name__ == '__main__':
-    pass
+    base = eddypro_ConfigParser('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
+
+    copy(base)
+
