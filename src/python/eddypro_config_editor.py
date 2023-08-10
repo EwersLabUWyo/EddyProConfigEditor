@@ -101,6 +101,7 @@ def or_isinstance(object, *types):
         if isinstance(object, t):
             return True
     return False
+
 def in_range(v, interval):
     """helper function to determine if a value is in some interval.
     intervals are specified using a string:
@@ -131,9 +132,6 @@ def in_range(v, interval):
     else: bounds_satisfied += (v <= upper)
 
     return bounds_satisfied == 2
-
-        
-
 
 def compare_configs(df1: DataFrame, df2: DataFrame):
     """compare differences between two configs"""
@@ -812,6 +810,11 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         linterp: whether to linearly interpolate removed spikes (True, default) or to leave them as nan (False)
         max_consec_outliers: for each variable, a spike is detected as up to max_consec_outliers outliers. If more consecutive values are found to exceed the plausibility threshold, they are not flagged as spikes. Default 3.
         w/co2/h2o/ch4/gas4/others: z-score cutoffs for flagging outliers. Defaults are 5.0, 3.5, 3.5, 8.0, 8.0, 3.5, respectively.
+
+        limits on inputs:
+        accepted: 0-50%
+        consecutive outliers: 3-1000
+        z-scores: 1-20
         """
         assert or_isinstance(enable, int, bool), 'enable should be int or bool'
         assert method in ['VM97', 'M13', 0, 1], 'method should be one of VM97 (0) or M13 (1)'
@@ -855,7 +858,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
         methods = ['VM97', 'M13']
         out_dict['method'] = methods[int(self.get('RawProcess_ParameterSettings', 'despike_vm'))]
-        out_dict['accepted'] = float(self.get('RawProcess_ParameterSettings', 'sr_lim_hr'))
+        out_dict['accepted'] = float(self.get('RawProcess_ParameterSettings', 'sr_lim_hf'))
         out_dict['linterp'] = bool(int(self.get('RawProcess_ParameterSettings', 'filter_sr')))
         if out_dict['method'] == 'M13': return out_dict
 
@@ -876,9 +879,14 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         variation_range: the expected maximum z-score range for the data. Default ±7σ
         bins: int, the number of bins for the histogram. Default 100
         max_empty_bins: float, if more than max_empty_bins% of bins in the histogram are empty, flag for amplitude resolution problems
+
+        limits on inputs:
+        variation_range: 1-20
+        bins: 50-150
+        max_empty_bins: 1-100%
         """
         assert or_isinstance(enable, int, bool), 'enable should be int or bool'
-        assert or_isinstance(variation_range, int, float), 'variation_range should be numeric'
+        assert or_isinstance(variation_range, int, float) and in_range(variation_range, '[1, 20]'), 'variation_range should be numeric and in interval [1, 20]'
         assert isinstance(bins, int) and in_range(bins, '[50, 150]'), 'bins must be within [50, 150]'
         assert or_isinstance(max_empty_bins, int, float) and in_range(max_empty_bins, '[1, 100]'), 'max_empty_bins must be within 1-100%'
 
@@ -893,7 +901,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         self.set('RawProcess_ParameterSettings', 'ar_hf_lim', str(max_empty_bins))
 
         return
-    def get_AmplitudeResolutionFlat(self) -> dict:
+    def get_AmplitudeResolutionFlag(self) -> dict:
         out = dict()
         out['enable'] = bool(int(self.get('RawProcess_Tests', 'test_ar')))
         if not out['enable']: return out
@@ -917,6 +925,10 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         extreme_percentile: int, bins lower than this percentile in the histogram will be considered extreme. Default 10
         accepted_central_dropouts: If consecutive values fall within a non-extreme histogram bin, flag the instrument for a dropout. If more than accepted_central_dropouts% of the averaging interval are flagged as dropouts, flag the whole averagine interval. Default 10%
         accepted_extreme_dropouts: same as for accepted_central_dropouts, except for values in the extreme histogram range. Default 6%
+
+        limits on inputs:
+        extreme_percentile: 1-100
+        accepted_central/extreme_droupouts: 1-100%
         """
         assert or_isinstance(enable, int, bool), 'enable should be int or bool'
         assert isinstance(extreme_percentile, int) and in_range(extreme_percentile, '[1, 100]'), 'extreme_percentile must be between 1 and 100 and numeric'
@@ -981,7 +993,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         assert or_isinstance(w, int, float) and in_range(w, '[0.5, 10]'), 'w must be int or float between 0.5 and 10m/s'
         for name, v, lims in zip(
             ['ts', 'co2', 'h2o', 'ch4', 'gas4'], 
-            [u, w, ts, co2, h2o, ch4, gas4],
+            [ts, co2, h2o, ch4, gas4],
             ['[-100, 100]', '[100, 10_000]', '[0, 1000]', '[0, 1000]', '[0, 1000]']
         ):
             if not (
@@ -1056,7 +1068,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         all following arguments obey similar logic. Defaults are (2.0, 1.0), (1.0, 2.0), (8.0, 5.0) respectively.
 
         limits are as follows:
-        soft flag < hard flag
+        |soft flag| <= |hard flag|
         skew lower in [-3, -0.1]
         skew upper in [0.1, 3]
         kurt lower in [0.1, 3]
@@ -1073,12 +1085,14 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 or_isinstance(v[1], int, float) and
                 or_isinstance(v, Sequence) and
                 len(v) == 2 and
-                v[0] <= v[1] and
                 in_range(v[0], bounds) and
                 in_range(v[1], bounds)
             ):
-                raise AssertionError(f'{name} must be a non-decreasing sequence of int or float of length 2 with each element within the bounds {bounds}')
-        
+                raise AssertionError(f'{name} must be a sequence (hard, soft) of int or float of length 2 with each element within the bounds {bounds} and with hard being more extreme than soft')
+        assert skew_lower[0] <= skew_lower[1], 'hard for skew_lower must be <= soft'
+        assert skew_upper[0] >= skew_upper[1], 'hard for skew_upper must be >= soft'
+        assert kurt_lower[0] <= kurt_lower[1], 'hard for kurt_lower must be <= soft'
+        assert kurt_upper[0] >= kurt_upper[1], 'hard for kurt_upper must be <= soft'
         if not enable:
             self.set('RawProcess_Tests', 'test_sk', '0')
             return
@@ -1136,11 +1150,11 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 or_isinstance(v[1], int, float) and
                 or_isinstance(v, Sequence) and
                 len(v) == 2 and
-                v[0] <= v[1] and
+                v[0] >= v[1] and
                 in_range(v[0], '[0, 50]') and
                 in_range(v[1], '[0, 50]')
             ):
-                raise AssertionError(f'{name} must be a non-decreasing sequence of int or float of length 2 with each element within the bounds [0, 50]')
+                raise AssertionError(f'{name} must be a non-increasing sequence of int or float of length 2 with each element within the bounds [0, 50]')
         
         if not enable:
             self.set('RawProcess_Tests', 'test_ds', '0')
@@ -1169,7 +1183,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             out[k] = (soft, hard)
         return out
         
-    def set_TimeLagFlag(
+    def set_TimelagFlag(
         self,
         enable: bool | int = False,
         covariance_difference: Sequence[float, float] = (20.0, 10.0),
@@ -1218,7 +1232,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         self.set('RawProcess_ParameterSettings', 'tl_def_ch4', str(ch4))
         self.set('RawProcess_ParameterSettings', 'tl_def_n2o', str(gas4))
         return
-    def get_TimeLagFlag(self):
+    def get_TimelagFlag(self):
         out = dict()
         out['enable'] = bool(int(self.get('RawProcess_Tests', 'test_tl')))
         if not out['enable']: return out
@@ -1231,6 +1245,8 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         out['h2o'] = self.get('RawProcess_ParameterSettings', 'tl_def_h2o')
         out['ch4'] = self.get('RawProcess_ParameterSettings', 'tl_def_ch4')
         out['gas4'] = self.get('RawProcess_ParameterSettings', 'tl_def_n2o')
+
+        return out
 
     def set_AngleOfAttackFlag(
         self,
@@ -1252,9 +1268,9 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         accepted_outliers: 0-100%
         """
         assert or_isinstance(enable, int, bool), 'enable should be int or bool'
-        assert or_isinstance(aoa_min, int, bool) and in_range(aoa_min, '[-90, 0]'), 'aoa_min should be numeric and within the interval [-90, 0]'
-        assert or_isinstance(aoa_max, int, bool) and in_range(aoa_max, '[0, 90]'), 'aoa_max should be numeric and within the interval [0, 90]'
-        assert or_isinstance(accepted_outliers, int, bool) and in_range(aoa_max, '[0, 100]'), 'accepted_outliers should be numeric and within the interval [0, 100]'
+        assert or_isinstance(aoa_min, int, float) and in_range(aoa_min, '[-90, 0]'), 'aoa_min should be numeric and within the interval [-90, 0]'
+        assert or_isinstance(aoa_max, int, float) and in_range(aoa_max, '[0, 90]'), 'aoa_max should be numeric and within the interval [0, 90]'
+        assert or_isinstance(accepted_outliers, int, float) and in_range(aoa_max, '[0, 100]'), 'accepted_outliers should be numeric and within the interval [0, 100]'
         
         if not enable:
             self.set('RawProcess_Tests', 'test_aa', '0')
@@ -1334,14 +1350,13 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         self.set('Project', 'ru_meth', str(method))
 
         its_defs = {k:v for k, v in zip(['at_1/e', 'at_0', 'whole_period'], range(3))}
-        if its_defs in its_defs:
+        if its_definition in its_defs:
             its_definition = its_defs[its_definition]
         self.set('Project', 'ru_tlag_meth', str(its_definition))
 
         self.set('Project', 'ru_tlag_max', str(maximum_correlation_period))
         
-        return
-    
+        return  
     def get_EstimateRandomUncertainty(self):
         out = dict()
         methods = ['disable', 'FS01', 'ML94', 'M98']
@@ -1354,6 +1369,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
         return out
 
+    # ---------------utilities-----------------------
     def to_eddypro(self, ini_file: str | PathLike[str], out_path: str | PathLike[str] | Literal['keep'] = 'keep'):
         """write to a .eddypro file.
         ini_file: the file name to write to
@@ -1501,8 +1517,8 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         return self.copy()
 
 if __name__ == '__main__':
-    pass
-    
+    ref = eddypro_ConfigParser('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
+
 
 
 
