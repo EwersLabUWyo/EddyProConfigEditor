@@ -1123,10 +1123,52 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         enable: whether to enable discontinuity flagging. Default False
         u, w, ts, co2, h2o, ch4, gas4: a sequence of (hard, soft) specifying the hard and soft-flag thresholds for the haar transform on raw data. See eddypro documentation or Vickers and Mahrt 1997 for an explanation of thresholds.
         variances: same as above, but for variances rather than raw data.
+
+        must have hard >= soft, and all values must be within the interval [0, 50]
         """
+        assert or_isinstance(enable, int, bool), 'enable should be int or bool'
+        for v, name in zip(
+            [u, w, ts, co2, h2o, ch4, gas4, variances],
+            ['u', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'variances'],
+        ):
+            if not(
+                or_isinstance(v[0], int, float) and
+                or_isinstance(v[1], int, float) and
+                or_isinstance(v, Sequence) and
+                len(v) == 2 and
+                v[0] <= v[1] and
+                in_range(v[0], '[0, 50]') and
+                in_range(v[1], '[0, 50]')
+            ):
+                raise AssertionError(f'{name} must be a non-decreasing sequence of int or float of length 2 with each element within the bounds [0, 50]')
+        
+        if not enable:
+            self.set('RawProcess_Tests', 'test_ds', '0')
+            return
+        self.set('RawProcess_Tests', 'test_ds', '1')  
 
-        pass
+        for name, v in zip(
+            ['uv', 'w', 't', 'co2', 'h2o', 'ch4', 'n2o', 'var'],  # gas4 called n2o by eddypro
+            [u, w, ts, co2, h2o, ch4, gas4, variances]
+        ):
+            soft, hard = v
+            self.set('RawProcess_ParameterSettings', f'ds_sf_{name}', str(soft))
+            self.set('RawProcess_ParameterSettings', f'ds_hf_{name}', str(hard))
+        return
+    def get_DiscontinuityFlag(self):
+        out = dict()
+        out['enable'] = bool(int(self.get('RawProcess_Tests', 'test_ds')))
+        if not out['enable']: return out
 
+        for name, k in  zip(
+            ['uv', 'w', 't', 'co2', 'h2o', 'ch4', 'n2o', 'var'],  # gas4 called n2o by eddypro
+            ['u', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'variances']
+        ):
+            soft = float(self.get('RawProcess_ParameterSettings', f'ds_sf_{name}'))
+            hard = float(self.get('RawProcess_ParameterSettings', f'ds_hf_{name}'))
+            out[k] = (soft, hard)
+        return out
+        
     def set_TimeLagFlag(
         self,
         enable: bool | int = False,
@@ -1141,71 +1183,176 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         enable: whether to enable flagging for excessive changes in covariance due to time lags (default False)
         covariance_difference: a tuple of (hard, soft) for covariance differences as a % between uncorrected and time-lag-corrected covariances, where hard defines the hard-flagging threshold and soft defines the soft-flagging threshold.
         co2/h2o/ch4/gas4: the expected time lags for each gas in seconds.
-        """
 
-        pass
+        limits on inputs:
+        covariance_difference: 0-100%, with soft <= hard
+        all other values: 0-100s
+        """
+        assert or_isinstance(enable, int, bool), 'enable should be int or bool'
+        if not(
+                or_isinstance(covariance_difference[0], int, float) and
+                or_isinstance(covariance_difference[1], int, float) and
+                or_isinstance(covariance_difference, Sequence) and
+                len(covariance_difference) == 2 and
+                covariance_difference[0] >= covariance_difference[1] and
+                in_range(covariance_difference[0], '[0, 100]') and
+                in_range(covariance_difference[1], '[0, 100]')
+            ):
+            raise AssertionError('covariance_difference must be a non-increasing sequence of length 2 of ints or floats between 0 and 100%')
+        assert or_isinstance(co2, float, int) and in_range(co2, '[0, 100]'), 'co2 must be numeric and in the range of 0-100 seconds'
+        assert or_isinstance(h2o, float, int) and in_range(h2o, '[0, 100]'), 'h2o must be numeric and in the range of 0-100 seconds'
+        assert or_isinstance(ch4, float, int) and in_range(ch4, '[0, 100]'), 'ch4 must be numeric and in the range of 0-100 seconds'
+        assert or_isinstance(gas4, float, int) and in_range(gas4, '[0, 100]'), 'gas4 must be numeric and in the range of 0-100 seconds'
+
+        if not enable:
+            self.set('RawProcess_Tests', 'test_tl', '0')
+            return
+        self.set('RawProcess_Tests', 'test_tl', '1')
+
+        soft, hard = covariance_difference
+        self.set('RawProcess_ParameterSettings', 'tl_sf_lim', str(soft))
+        self.set('RawProcess_ParameterSettings', 'tl_hf_lim', str(hard))
+
+        self.set('RawProcess_ParameterSettings', 'tl_def_co2', str(co2))
+        self.set('RawProcess_ParameterSettings', 'tl_def_h2o', str(h2o))
+        self.set('RawProcess_ParameterSettings', 'tl_def_ch4', str(ch4))
+        self.set('RawProcess_ParameterSettings', 'tl_def_n2o', str(gas4))
+        return
+    def get_TimeLagFlag(self):
+        out = dict()
+        out['enable'] = bool(int(self.get('RawProcess_Tests', 'test_tl')))
+        if not out['enable']: return out
+
+        soft = self.get('RawProcess_ParameterSettings', 'tl_sf_lim')
+        hard = self.get('RawProcess_ParameterSettings', 'tl_hf_lim')
+        out['covariance_difference'] = (soft, hard)
+
+        out['co2'] = self.get('RawProcess_ParameterSettings', 'tl_def_co2')
+        out['h2o'] = self.get('RawProcess_ParameterSettings', 'tl_def_h2o')
+        out['ch4'] = self.get('RawProcess_ParameterSettings', 'tl_def_ch4')
+        out['gas4'] = self.get('RawProcess_ParameterSettings', 'tl_def_n2o')
 
     def set_AngleOfAttackFlag(
         self,
         enable: bool | int = False,
-        min: float = -30.0,
-        max: float = 30.0,
+        aoa_min: float = -30.0,
+        aoa_max: float = 30.0,
         accepted_outliers: float = 10.0,
     ):
         """
         Settings for flagging extreme angles of attack
         enable: whether to enable angle-of-attack flagging. Default False
-        min: the minimum acceptable angle of attack in degrees. Default -30.
-        max: the maximum acceptable angle of attack in degrees. Default 30.
+        aoa_min: the minimum acceptable angle of attack in degrees. Default -30.
+        aoa_max: the maximum acceptable angle of attack in degrees. Default 30.
         accepted_outliers: if more than accepted_outliers% of values lie outside the specified bounds, flag the averaging window. Default 10%.
-        """
 
-        pass
+        limits on inputs:
+        aoa_min: -90 - 0°
+        aoa_max: 0 - 90°
+        accepted_outliers: 0-100%
+        """
+        assert or_isinstance(enable, int, bool), 'enable should be int or bool'
+        assert or_isinstance(aoa_min, int, bool) and in_range(aoa_min, '[-90, 0]'), 'aoa_min should be numeric and within the interval [-90, 0]'
+        assert or_isinstance(aoa_max, int, bool) and in_range(aoa_max, '[0, 90]'), 'aoa_max should be numeric and within the interval [0, 90]'
+        assert or_isinstance(accepted_outliers, int, bool) and in_range(aoa_max, '[0, 100]'), 'accepted_outliers should be numeric and within the interval [0, 100]'
+        
+        if not enable:
+            self.set('RawProcess_Tests', 'test_aa', '0')
+            return
+        self.set('RawProcess_Tests', 'test_aa', '1')
+
+        self.set('RawProcess_ParameterSettings', 'aa_min', str(aoa_min))
+        self.set('RawProcess_ParameterSettings', 'aa_max', str(aoa_max))
+        self.set('RawProcess_ParameterSettings', 'aa_lim', str(accepted_outliers))
+        return
+    def get_AngleOfAttackFlag(self):
+        out = dict()
+        out['enable'] = bool(int(self.get('RawProcess_Tests', 'test_aa')))
+        if not out['enable']: return out
+
+        out['aoa_min'] = float(self.get('RawProcess_ParameterSettings', 'aa_min'))
+        out['aoa_max'] = float(self.get('RawProcess_ParameterSettings', 'aa_max'))
+        out['accepted_outliers'] = float(self.get('RawProcess_ParameterSettings', 'aa_lim'))
+
+        return out
 
     def set_SteadinessOfHorizontalWindFlag(
         self,
         enable: bool | int = False,
-        accepted_relative_instationarity: float = 0.5,
+        max_rel_inst: float = 0.5,
     ):
         """
         Settings for flagging horizontal wind steadiness. 
 
         enable: whether to enable flagging of horizontal wind steadiness. Default False.
-        accepted_relative_instationarity: if the change in windspeed over the averaging window normalized by the mean windspeed exceeds this threshold, hard-flag the record. Default 0.5 for 50% relative instationarity.
-        """
+        max_rel_inst: if the change in windspeed over the averaging window normalized by the mean windspeed exceeds this threshold, hard-flag the record. Default 0.5 for 50% relative instationarity.
 
-        pass
+        max_rel_inst should be within the interval [0, 50]
+        """
+        assert or_isinstance(enable, int, bool), 'enable should be int or bool'
+        assert or_isinstance(max_rel_inst, int, float) and in_range(max_rel_inst, '[0, 50]'), 'max_rel_inst should be within [0, 50]'
+       
+        if not enable:
+            self.set('RawProcess_Tests', 'test_ns', '0')
+            return
+        self.set('RawProcess_Tests', 'test_ns', '1')
+        
+        self.set('RawProcess_ParameterSettings', 'ns_hf_lim', str(max_rel_inst))
+        return
+    def get_SteadinessOfHorizontalWindFlag(self):
+        out = dict()
+        out['enable'] = bool(int(self.get('RawProcess_Tests', 'test_ns')))
+        if not out['enable']: return out
+
+        out['max_rel_inst'] = float(self.get('RawProcess_ParameterSettings', 'ns_hf_lim'))
+        
+        return out
 
     def set_EstimateRandomUncertainty(
         self,
-        enable: bool | int = False,
-        method: Literal['FS01', 'ML94', 'M98'] | int = 'FS01',
+        method: Literal['disable', 'FS01', 'ML94', 'M98'] | int = 'disable',
         its_definition: Literal['at_1/e', 'at_0', 'whole_period'] | int = 'at_1/e',
         maximum_correlation_period: float = 10.0
     ):
         """
         Settings for estimating random uncertainty due to sampling error
-        enable: whether to estimate random uncertainty due to sampling error, default False
-        method: one of FS01 (Finkelstein and Sims 2001), ML94 (Mann & Lenschow 1994), or M98 (Mahrt 1998), or 0, 1, or 2, respectively
+        method: one of disable, FS01 (Finkelstein and Sims 2001), ML94 (Mann & Lenschow 1994), or M98 (Mahrt 1998), or 0, 1, or 2, respectively
         its_definition: definition of the integral turbulence scale. Options are 'at_1/e', 'at_0', 'whole_record', or 0, 1, or 2, respecitvely. See EddyPro documentation for more details.
-        maximum_correlation_period: maximum time to integrate over when determining the integral turbulence scale. Default is 10.0s
+        maximum_correlation_period: maximum time to integrate over when determining the integral turbulence scale. Default is 10.0s. Must be within [0, 10000] seconds
         """
 
-        pass
+        assert isinstance(method, str) or method in range(4), 'method must be one of disable (0), FS01 (1), ML94 (2), or M98 (3)'
+        assert isinstance(its_definition, str) or its_definition in range(3), 'its_definition must be one of at_1/e (0), at_0 (1), or whole_period (2)'
+        assert or_isinstance(maximum_correlation_period, float, int) and in_range(maximum_correlation_period, '[0, 10_000]'), 'maximum_correlation_period must be numeric and in the range of [0, 10_000] seconds'
 
+        methods = {k:v for k, v in zip(['disable', 'FS01', 'ML94', 'M98'], range(4))}
+        if method in methods:
+            method = methods[method]
+        if not method:
+            self.set('Project', 'ru_meth', '0')
+            return
+        self.set('Project', 'ru_meth', str(method))
 
+        its_defs = {k:v for k, v in zip(['at_1/e', 'at_0', 'whole_period'], range(3))}
+        if its_defs in its_defs:
+            its_definition = its_defs[its_definition]
+        self.set('Project', 'ru_tlag_meth', str(its_definition))
 
-
-
-
-
-
-
-
+        self.set('Project', 'ru_tlag_max', str(maximum_correlation_period))
+        
+        return
     
+    def get_EstimateRandomUncertainty(self):
+        out = dict()
+        methods = ['disable', 'FS01', 'ML94', 'M98']
+        out['method'] = methods[(int(self.get('Project', 'ru_meth')))]
+        if out['method'] == 'disable': return out
 
+        its_defs = ['at_1/e', 'at_0', 'whole_period']
+        out['its_definition'] = its_defs[int(self.get('Project', 'ru_tlag_meth'))]
+        out['maximum_correlation_period'] = float(self.get('Project', 'ru_tlag_max'))
 
-
+        return out
 
     def to_eddypro(self, ini_file: str | PathLike[str], out_path: str | PathLike[str] | Literal['keep'] = 'keep'):
         """write to a .eddypro file.
