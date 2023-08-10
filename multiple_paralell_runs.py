@@ -6,7 +6,7 @@ import multiprocessing
 
 from tqdm import tqdm
 
-from src.python.eddypro_config_editor import eddypro_ConfigParser
+from src.python.eddypro_config_editor import EddyproConfigEditor
 from run_eddypro_parallel import call, make_eddypro_calls
 
 if __name__ == '__main__':
@@ -15,7 +15,7 @@ if __name__ == '__main__':
 
     # configure base file
     base_env = wd / 'base'
-    base = eddypro_ConfigParser(reference_ini=base_env / 'ini/base.eddypro')
+    base = EddyproConfigEditor(reference_ini=base_env / 'ini/base.eddypro')
     # save a reference file as a copy of base
     reference_ini = wd / 'reference.eddypro'
     base.to_eddypro(reference_ini, out_path=base_env / 'output')
@@ -51,7 +51,7 @@ if __name__ == '__main__':
             master_fn = ini_dir / 'master.eddypro'
 
             # modify ini files
-            ini = eddypro_ConfigParser(reference_ini=reference_ini)
+            ini = EddyproConfigEditor(reference_ini=reference_ini)
             ini.set_AxisRotationsForTiltCorrection(method=tiltcorr)
             ini.set_TimeLagCompensations(method=timelag)
             ini.set_TurbulentFluctuations(method=turbfluct)

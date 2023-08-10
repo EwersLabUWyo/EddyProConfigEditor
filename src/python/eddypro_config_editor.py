@@ -146,8 +146,11 @@ def compare_configs(df1: DataFrame, df2: DataFrame):
     )
     return df_compare
 
-class eddypro_ConfigParser(configparser.ConfigParser):
-    '''a child class of configparser.ConfigParser added methods to modify eddypro-specific settings'''
+class EddyproConfigEditor(configparser.ConfigParser):
+    '''
+    a child class of configparser.ConfigParser. Adds specific methods added methods to work with eddypro .ini files
+    
+    '''
     def __init__(self, reference_ini: str | PathLike[str]):
         '''reference_ini: a .eddypro file to modify'''
         super().__init__(allow_no_value=True)
@@ -288,7 +291,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
             tmp = open(tmp.name, mode='r')
             cls = self.__class__
-            new = self.__new__(cls)
+            new = self.__new(cls)
             new.__init__(tmp.name)
             tmp.close()
 
@@ -310,7 +313,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
     class _Basic:
         def __init__(self, root):
             self.root = root
-        def set_StartDate(
+        def set_start_date(
             self,
             start: str | datetime.datetime | None = None, 
         ):
@@ -328,12 +331,12 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('Project', 'pr_start_time', str(pr_start_time))
 
             self.root._start_set = True 
-        def get_StartDate(self) ->datetime.datetime:
+        def get_start_date(self) ->datetime.datetime:
             """retrieve form the config file the project start date."""
             start_date = self.root.get('Project', 'pr_start_date')
             start_time = self.root.get('Project', 'pr_start_time')
             return datetime.datetime.strptime(f'{start_date} {start_time}', r'%Y-%m-%d %H:%M')  
-        def set_EndDate(
+        def set_end_date(
             self,
             end: str | datetime.datetime | None = None
         ):
@@ -349,42 +352,42 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('Project', 'pr_end_time', str(pr_end_time))
 
             self.root._end_set = True
-        def get_EndDate(self) -> datetime.datetime:
+        def get_end_date(self) -> datetime.datetime:
             """retrieve form the config file the project end date."""
             end_date = self.root.get('Project', 'pr_end_date')
             end_time = self.root.get('Project', 'pr_end_time')
             return datetime.datetime.strptime(f'{end_date} {end_time}', r'%Y-%m-%d %H:%M')    
-        def set_DateRange(
+        def set_date_range(
             self,
             start: str | datetime.datetime | None = None, 
             end: str | datetime.datetime | None = None
         ):
             """format yyyy-mm-dd HH:MM for strings"""
-            self.set_StartDate(start)
-            self.set_EndDate(end)
-        def get_DateRange(self) -> dict:
-            """retrieve form the config file the project start and end dates. Output can be can be passed to set_DateRange as kwargs"""
-            start = self.get_StartDate()
-            end = self.get_EndDate()
+            self.set_start_date(start)
+            self.set_end_date(end)
+        def get_date_range(self) -> dict:
+            """retrieve form the config file the project start and end dates. Output can be can be passed to set_date_range__ as kwargs"""
+            start = self.get_start_date()
+            end = self.get_end_date()
             return dict(start=start, end=end)
             
-        def set_MissingSamplesAllowance(self, pct: int):
+        def set_missing_samples_allowance(self, pct: int):
             # pct: value from 0 to 40%
             assert pct >= 0 and pct <= 40
             self.root.set('RawProcess_Settings', 'max_lack', str(int(pct)))
-        def get_MissingSamplesAllowance(self) -> int:
+        def get_missing_samples_allowance(self) -> int:
             """retrieve form the config file the maximum allowed missing samples per averaging window in %."""
             return int(self.root.get('RawProcess_Settings', 'max_lack'))
         
-        def set_FluxAveragingInterval(self, minutes: int):
+        def set_flux_averaging_interval(self, minutes: int):
             """minutes: how long to set the averaging interval to. If 0, use the file as-is"""
             assert minutes >= 0 and minutes <= 9999, 'Must have 0 <= minutes <= 9999'
             self.root.set('RawProcess_Settings', 'avrg_len', str(int(minutes)))
-        def get_FluxAveragingInterval(self) -> int:
+        def get_flux_averaging_interval(self) -> int:
             """retrieve form the config file the flux averaging interval in minutes"""
             return self.root.get('RawProcess_Settings', 'avrg_len')
         
-        def set_NorthReference(
+        def set_north_reference(
             self, 
             method: Literal['mag', 'geo'], 
             magnetic_declination: float | None = None, 
@@ -409,8 +412,8 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 else:
                     declination_date = declination_date.strftime(r'%Y-%m-%d')
                 self.root.set('RawProcess_General', 'dec_date', str(declination_date))
-        def get_NorthReference(self) -> dict:
-            """retrieve form the config file the north reference data. output can be passed to set_NorthReference as kwargs."""
+        def get_north_reference(self) -> dict:
+            """retrieve form the config file the north reference data. output can be passed to set_north_reference__ as kwargs."""
             use_geo_north = self.root.get('RawProcess_General', 'use_geo_north')
             if use_geo_north: use_geo_north = 'geo'
             else: use_geo_north = 'mag'
@@ -423,10 +426,10 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
             return dict(method=use_geo_north, magnetic_declination=mag_dec, declination_date=dec_date)
         
-        def set_ProjectId(self, project_id: str):
+        def set_project_id(self, project_id: str):
             assert ' ' not in project_id and '_' not in project_id, 'project id must not contain spaces or underscores.'
             self.root.set('Project', 'project_id', str(project_id))
-        def get_ProjectId(self) -> str:
+        def get_project_id(self) -> str:
             """retrieve form the config file the project project ID"""
             return self.root.get('Project', 'project_id')
         
@@ -444,12 +447,12 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             def __init__(self, outer):
                 self.outer = outer
                 self.root = outer.root
-            def set_WindSpeedMeasurementOffsets(self, u: float = 0, v: float = 0, w: float = 0):
+            def set_wind_speed_measurement_offsets(self, u: float = 0, v: float = 0, w: float = 0):
                 assert max(u**2, v**2, w**2) <= 100, 'Windspeed measurement offsets cannot exceed ±10m/s'
                 self.root.set('RawProcess_Settings', 'u_offset', str(u))
                 self.root.set('RawProcess_Settings', 'v_offset', str(v))
                 self.root.set('RawProcess_Settings', 'w_offset', str(w))
-            def get_WindSpeedMeasurementOffsets(self) -> dict:
+            def get_wind_speed_measurement_offsets(self) -> dict:
                 """retrieve form the config file the wind speed measurement offsets in m/s. Can be passed to set_windspeedmeasurementoffsets as kwargs"""
                 return dict(
                     u=float(self.root.get('RawProcess_Settings', 'u_offset')),
@@ -457,7 +460,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     w=float(self.root.get('RawProcess_Settings', 'w_offset'))
                 )
             
-            def _configure_PlanarFitSettings(
+            def _configure_planar_fit_settings(
                 self,
                 w_max: float,
                 u_min: float = 0,
@@ -477,7 +480,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
                 sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. If None (default), provide no sector information.
 
-                Returns: a dictionary to provide to set_AxisRotationsForTiltCorrection
+                Returns: a dictionary to provide to set_axis_rotations_for_tiltCorrection
                 """
 
                 # start/end date/time
@@ -543,16 +546,16 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                         settings_dict[f'pf_sector_{n}_width'] = str(width)
                 
                 return settings_dict
-            def set_AxisRotationsForTiltCorrection(
+            def set_axis_rotations_for_tilt_correction(
                     self, 
                     method: Literal['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb'] | int,
                     pf_file: str | PathLike[str] | None = None,
-                    configure_PlanarFitSettings_kwargs: dict | None = None,
+                    configure_planar_fit_settings_kwargs: dict | None = None,
                 ):
                 """
                 method: one of 0 or "none" (no tilt correction), 1 or "double_rotations" (double rotations), 2 or "triple_rotations" (triple rotations), 3 or "planar_fit" (planar fit, Wilczak 2001), 4 or "planar_fit_nvb" (planar with with no velocity bias (van Dijk 2004)). one of pf_file or pf_settings_kwargs must be provided if method is a planar fit type.
                 pf_file: Mututally exclusive with pf_settings_kwargs. If method is a planar fit type, path to an eddypro-compatible planar fit file. This can be build by hand, or taken from the output of a previous eddypro run. Typically labelled as "eddypro_<project id>_planar_fit_<timestamp>_adv.txt"
-                pf_settings_kwargs: Mututally exclusive with pf_file. Arguments to be passed to configure_PlanarFitSettings.
+                pf_settings_kwargs: Mututally exclusive with pf_file. Arguments to be passed to configure_planar_fit_settings.
                 """
                 method_dict = {'none':0, 'double_rotations':1, 'triple_rotations':2, 'planar_fit':3, 'planar_fit_nvb':4}
                 if isinstance(method, str):
@@ -564,51 +567,51 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 # planar fit
                 if method in [3, 4]:
-                    assert bool(pf_file) != bool(configure_PlanarFitSettings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
+                    assert bool(pf_file) != bool(configure_planar_fit_settings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
                     if pf_file is not None:
                         self.root.set('RawProcess_TiltCorrection_Settings', 'pf_file', str(pf_file))
                         self.root.set('RawProcess_TiltCorrection_Settings', 'pf_mode', str(0))
                         self.root.set('RawProcess_TiltCorrection_Settings', 'pf_subset', str(1))
-                    elif configure_PlanarFitSettings_kwargs is not None:
+                    elif configure_planar_fit_settings_kwargs is not None:
                         self.root.set('RawProcess_TiltCorrection_Settings', 'pf_file', '')
                         self.root.set('RawProcess_TiltCorrection_Settings', 'pf_mode', str(1))
                         self.root.set('RawProcess_TiltCorrection_Settings', 'pf_subset', str(1))
-                        pf_settings = self._configure_PlanarFitSettings(**configure_PlanarFitSettings_kwargs)
+                        pf_settings = self._configure_planar_fit_settings(**configure_planar_fit_settings_kwargs)
                         for option, value in pf_settings.items():
                             self.root.set('RawProcess_TiltCorrection_Settings', option, str(value))
-            def get_AxisRotationsForTiltCorrection(self) -> dict:
+            def get_axis_rotations_for_tilt_correction(self) -> dict:
                 """
                 extracts axis rotation settings from the config file.
-                Returns a dictionary that containing a dictionary of kwargs that can be passed to set_AxisRotationsForTiltCorrection
+                Returns a dictionary that containing a dictionary of kwargs that can be passed to set_axis_rotations_for_tiltCorrection
                 """
 
                 methods = ['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb']
                 method = methods[int(self.root.get('RawProcess_Settings', 'rot_meth'))]
                 # initially set planar fit config to none
-                configure_PlanarFitSettings_kwargs = None
+                configure_planar_fit_settings_kwargs = None
                 pf_file = None
 
-                # if we have planar fit, then returna  dict for pf_config that can be passed to _configure_PlanarFitSettings
+                # if we have planar fit, then returna  dict for pf_config that can be passed to _configure_planar_fit_settings
                 if method in ['planar_fit', 'planar_fit_nvb']:
-                    configure_PlanarFitSettings_kwargs = dict()
+                    configure_planar_fit_settings_kwargs = dict()
                     # case that a manual configuration is provided
                     start_date = self.root.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
                     start_time = self.root.get('RawProcess_TiltCorrection_Settings', 'pf_start_time')
                     if not start_date: start_date = self.root.get('Project', 'pr_start_date')
                     if not start_time: start_time = self.root.get('Project', 'pr_start_time')
-                    configure_PlanarFitSettings_kwargs['start'] = start_date + ' ' + start_time
+                    configure_planar_fit_settings_kwargs['start'] = start_date + ' ' + start_time
                     end_date = self.root.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
                     end_time = self.root.get('RawProcess_TiltCorrection_Settings', 'pf_end_time')
                     if not end_date: end_date = self.root.get('Project', 'pr_end_date')
                     if not end_time: end_time = self.root.get('Project', 'pr_end_time')
-                    configure_PlanarFitSettings_kwargs['end'] = end_date + ' ' + end_time
+                    configure_planar_fit_settings_kwargs['end'] = end_date + ' ' + end_time
 
-                    configure_PlanarFitSettings_kwargs['u_min'] = float(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_u_min'))
-                    configure_PlanarFitSettings_kwargs['w_max'] = float(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_w_max'))
-                    configure_PlanarFitSettings_kwargs['num_per_sector_min'] = int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_min_num_per_sec'))          
+                    configure_planar_fit_settings_kwargs['u_min'] = float(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_u_min'))
+                    configure_planar_fit_settings_kwargs['w_max'] = float(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_w_max'))
+                    configure_planar_fit_settings_kwargs['num_per_sector_min'] = int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_min_num_per_sec'))          
                     fixes = ['CW', 'CCW', 'double_rotations']
-                    configure_PlanarFitSettings_kwargs['fix_method'] = fixes[int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_fix'))]
-                    configure_PlanarFitSettings_kwargs['north_offset'] = float(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_north_offset'))
+                    configure_planar_fit_settings_kwargs['fix_method'] = fixes[int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_fix'))]
+                    configure_planar_fit_settings_kwargs['north_offset'] = float(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_north_offset'))
                     
                     n = 1
                     sectors = []
@@ -620,17 +623,17 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                         except configparser.NoOptionError:
                             break
                         n += 1
-                    configure_PlanarFitSettings_kwargs['sectors'] = sectors
+                    configure_planar_fit_settings_kwargs['sectors'] = sectors
                     
                     # case that a file config is provided
                     manual_pf_config = int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_mode'))
                     if not manual_pf_config:
                         pf_file = self.root.get('RawProcess_TiltCorrection_Settings', 'pf_file')
-                        configure_PlanarFitSettings_kwargs = None
+                        configure_planar_fit_settings_kwargs = None
                 
-                return dict(method=method, pf_file=pf_file, configure_PlanarFitSettings_kwargs=configure_PlanarFitSettings_kwargs)
+                return dict(method=method, pf_file=pf_file, configure_planar_fit_settings_kwargs=configure_planar_fit_settings_kwargs)
 
-            def set_TurbulentFluctuations(self, method: Literal['block', 'detrend', 'running_mean', 'exponential_running_mean'] | int = 0, time_const: float | None = None):
+            def set_turbulent_fluctuations(self, method: Literal['block', 'detrend', 'running_mean', 'exponential_running_mean'] | int = 0, time_const: float | None = None):
                 '''time constant in seconds not required for block averaging (0) (default)'''
                 method_dict = {'block':0, 'detrend':1, 'running_mean':2, 'exponential_running_mean':3}
                 if isinstance(method, str):
@@ -646,7 +649,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('RawProcess_Settings', 'detrend_meth', str(method))
                 self.root.set('RawProcess_Settings', 'timeconst', str(time_const))
 
-            def _configure_TimelagAutoOpt(
+            def _configure_timelag_auto_opt(
                     self,
                     start: str | datetime.datetime | None = None,
                     end: str | datetime.datetime | None = None,
@@ -733,7 +736,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 )
 
                 return settings_dict
-            def set_TimelagCompensations(
+            def set_timelag_compensations(
                     self, 
                     method: Literal['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization'] | int = 2, 
                     autoopt_file: PathLike[str] | str | None = None, 
@@ -763,13 +766,13 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                         self.root.set('RawProcess_TimelagOptimization_Settings', 'to_file', '')
                         self.root.set('RawProcess_TimelagOptimization_Settings', 'to_mode', str(1))
                         self.root.set('RawProcess_TimelagOptimization_Settings', 'to_subset', str(1))
-                        to_settings = self._configure_TimelagAutoOpt(**configure_TimelagAutoOpt_kwargs)
+                        to_settings = self._configure_timelag_auto_opt(**configure_TimelagAutoOpt_kwargs)
                         for option, value in to_settings.items():
                             self.root.set('RawProcess_TimelagOptimization_Settings', option, str(value))
-            def get_TimelagCompensations(self) -> dict:
+            def get_timelag_compensations(self) -> dict:
                 """
                 extracts time lag compensation settings from the config file.
-                Returns a dictionary that containing a dictionary of kwargs that can be passed to set_TimeLagCompensations
+                Returns a dictionary that containing a dictionary of kwargs that can be passed to set_time_lag_compensations_
                 """
 
                 methods = ['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization']
@@ -815,7 +818,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 return dict(method=method, autoopt_file=autoopt_file, configure_TimelagAutoOpt_kwargs=configure_TimelagAutoOpt_kwargs)
 
-            def _set_BurbaCoeffs(self, name, estimation_method, coeffs):
+            def _set_burba_coeffs(self, name, estimation_method, coeffs):
                 """helper method called by set_compensationOfDensityFluctuations"""
                 if estimation_method == 'multiple':
                     options=[f'm_{name}_{i}' for i in [1, 2, 3, 4]]
@@ -827,7 +830,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     assert len(coeffs) == 2, 'Simple regression coefficients must be a sequence of length two, representing (gain, offset)'
                     for option, value in zip(options, coeffs):
                         self.root.set('RawProcess_Settings', option, str(value))
-            def set_CompensationOfDensityFluctuations(
+            def set_compensation_of_density_fluctuations(
                     self,
                     enable: bool = True,
                     burba_correction: bool = False,
@@ -883,59 +886,59 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 if estimation_method == 'simple':
                     self.root.set('RawProcess_Settings', 'bu_multi', '0')
                     # daytime
-                    if day_bot == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('day_bot', 'simple', (0.944, 2.57))
+                    if day_bot == 'revert' or set_all == 'revert': self._set_burba_coeffs('day_bot', 'simple', (0.944, 2.57))
                     elif day_bot is None: pass
-                    else: self._set_BurbaCoeffs('day_bot', 'simple', day_bot)
+                    else: self._set_burba_coeffs('day_bot', 'simple', day_bot)
 
-                    if day_top == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('day_top', 'simple', (1.005, 0.24))
+                    if day_top == 'revert' or set_all == 'revert': self._set_burba_coeffs('day_top', 'simple', (1.005, 0.24))
                     elif day_top is None: pass
-                    else: self._set_BurbaCoeffs('day_top', 'simple', day_top)
+                    else: self._set_burba_coeffs('day_top', 'simple', day_top)
                     
-                    if day_spar == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('day_spar', 'simple', (1.010, 0.36))
+                    if day_spar == 'revert' or set_all == 'revert': self._set_burba_coeffs('day_spar', 'simple', (1.010, 0.36))
                     elif day_spar is None: pass
-                    else: self._set_BurbaCoeffs('day_spar', 'simple', day_spar)
+                    else: self._set_burba_coeffs('day_spar', 'simple', day_spar)
 
                     # nighttime
-                    if night_bot == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('night_bot', 'simple', (0.883, 2.17))
+                    if night_bot == 'revert' or set_all == 'revert': self._set_burba_coeffs('night_bot', 'simple', (0.883, 2.17))
                     elif night_bot is None: pass
-                    else: self._set_BurbaCoeffs('night_bot', 'simple', night_bot)
+                    else: self._set_burba_coeffs('night_bot', 'simple', night_bot)
 
-                    if night_top == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('night_top', 'simple', (1.008, -0.41))
+                    if night_top == 'revert' or set_all == 'revert': self._set_burba_coeffs('night_top', 'simple', (1.008, -0.41))
                     elif night_top is None: pass
-                    else: self._set_BurbaCoeffs('night_top', 'simple', night_top)
+                    else: self._set_burba_coeffs('night_top', 'simple', night_top)
                     
-                    if night_spar == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('night_spar', 'simple', (1.010, -0.17))
+                    if night_spar == 'revert' or set_all == 'revert': self._set_burba_coeffs('night_spar', 'simple', (1.010, -0.17))
                     elif night_spar is None: pass
-                    else: self._set_BurbaCoeffs('night_spar', 'simple', night_spar)
+                    else: self._set_burba_coeffs('night_spar', 'simple', night_spar)
 
                 elif estimation_method == 'multiple':
                     self.root.set('RawProcess_Settings', 'bu_multi', '1')
                     # daytime
-                    if day_bot == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('day_bot', 'multiple', (2.8, -0.0681, 0.0021, -0.334))
+                    if day_bot == 'revert' or set_all == 'revert': self._set_burba_coeffs('day_bot', 'multiple', (2.8, -0.0681, 0.0021, -0.334))
                     elif day_bot is None: pass
-                    else: self._set_BurbaCoeffs('day_bot', 'multiple', day_bot)
+                    else: self._set_burba_coeffs('day_bot', 'multiple', day_bot)
 
-                    if day_top == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('day_top', 'multiple', (-0.1, -0.0044, 0.011, -0.022))
+                    if day_top == 'revert' or set_all == 'revert': self._set_burba_coeffs('day_top', 'multiple', (-0.1, -0.0044, 0.011, -0.022))
                     elif day_top is None: pass
-                    else: self._set_BurbaCoeffs('day_top', 'multiple', day_top)
+                    else: self._set_burba_coeffs('day_top', 'multiple', day_top)
                     
-                    if day_spar == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('day_spar', 'multiple', (0.3, -0.0007, 0.0006, -0.044))
+                    if day_spar == 'revert' or set_all == 'revert': self._set_burba_coeffs('day_spar', 'multiple', (0.3, -0.0007, 0.0006, -0.044))
                     elif day_spar is None: pass
-                    else: self._set_BurbaCoeffs('day_spar', 'multiple', day_spar)
+                    else: self._set_burba_coeffs('day_spar', 'multiple', day_spar)
 
                     # nighttime
-                    if night_bot == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('night_bot', 'multiple', (0.5, -0.1160, 0.0087, -0.206))
+                    if night_bot == 'revert' or set_all == 'revert': self._set_burba_coeffs('night_bot', 'multiple', (0.5, -0.1160, 0.0087, -0.206))
                     elif night_bot is None: pass
-                    else: self._set_BurbaCoeffs('night_bot', 'multiple', night_bot)
+                    else: self._set_burba_coeffs('night_bot', 'multiple', night_bot)
 
-                    if night_top == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('night_top', 'multiple', (-1.7, -0.0160, 0.0051, -0.029))
+                    if night_top == 'revert' or set_all == 'revert': self._set_burba_coeffs('night_top', 'multiple', (-1.7, -0.0160, 0.0051, -0.029))
                     elif night_top is None: pass
-                    else: self._set_BurbaCoeffs('night_top', 'multiple', night_top)
+                    else: self._set_burba_coeffs('night_top', 'multiple', night_top)
                     
-                    if night_spar == 'revert' or set_all == 'revert': self._set_BurbaCoeffs('night_spar', 'multiple', (-2.1, -0.0200, 0.0070, 0.026))
+                    if night_spar == 'revert' or set_all == 'revert': self._set_burba_coeffs('night_spar', 'multiple', (-2.1, -0.0200, 0.0070, 0.026))
                     elif night_spar is None: pass
-                    else: self._set_BurbaCoeffs('night_spar', 'multiple', night_spar)
-            def get_CompensationOfDensityFluctuations(self) -> dict:
+                    else: self._set_burba_coeffs('night_spar', 'multiple', night_spar)
+            def get_compensation_of_density_fluctuations(self) -> dict:
 
                 out = dict()
                 out['enable'] = bool(int(self.root.get('Project', 'wpl_meth')))
@@ -961,7 +964,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root = outer.root
                 self.outer = outer
 
-            def set_SpikeFlag(
+            def set_spike_count_removal(
                     self, 
                     enable: bool | int  = True,
                     method: Literal['VM97', 'M13'] | int = 'VM97', 
@@ -1023,7 +1026,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     self.root.set('RawProcess_ParameterSettings', f'sr_lim_{name}', str(v))
                 
                 return
-            def get_SpikeFlag(self) -> dict:
+            def get_spike_count_remova(self) -> dict:
                 out_dict = dict()
                 out_dict['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_sr')))
                 if not out_dict['enable']: return out_dict
@@ -1038,7 +1041,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     out_dict[k] = float(self.root.get('RawProcess_ParameterSettings', f'sr_lim_{name}'))
                 return out_dict
 
-            def set_AmplitudeResolutionFlag(
+            def set_amplitude_resolution(
                 self,
                 enable: bool | int  = True,
                 variation_range: float = 7.0,
@@ -1073,7 +1076,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('RawProcess_ParameterSettings', 'ar_hf_lim', str(max_empty_bins))
 
                 return
-            def get_AmplitudeResolutionFlag(self) -> dict:
+            def get_amplitude_resolution(self) -> dict:
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_ar')))
                 if not out['enable']: return out
@@ -1084,7 +1087,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 return out
 
-            def set_DropoutFlag(
+            def set_dropouts(
                 self,
                 enable: bool | int = True,
                 extreme_percentile: int = 10,
@@ -1118,7 +1121,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('RawProcess_ParameterSettings', 'do_hf2_lim', str(accepted_extreme_dropouts))
 
                 return
-            def get_DropoutFlag(self):
+            def get_dropouts(self):
                 # enable
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_do')))
@@ -1130,7 +1133,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 return out
             
-            def set_AbsoluteLimitFlag(
+            def set_absolute_limits(
                 self,
                 enable: bool | int = True,
                 u: float = 30.0,
@@ -1205,7 +1208,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     return
                 self.root.set('RawProcess_ParameterSettings', 'filter_al', '0')
                 return
-            def get_AbsoluteLimitFlag(self):
+            def get_absolute_limits(self):
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_al')))
                 if not out['enable']: return out
@@ -1225,7 +1228,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 return out
 
-            def set_SkewnessAndKurtosisFlag(
+            def set_skewness_and_kurtosis(
                 self,
                 enable: bool | int = True,
                 skew_lower: tuple[float, float] = (-2.0, -1.0),
@@ -1278,7 +1281,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     self.root.set('RawProcess_ParameterSettings', f'sk_sf_{name}', str(soft))
                     self.root.set('RawProcess_ParameterSettings', f'sk_hf_{name}', str(hard))
                 return
-            def get_SkewnessAndKurtosisFlag(self):
+            def get_skewness_and_kurtosis(self):
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_sk')))
                 if not out['enable']: return out
@@ -1292,7 +1295,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     out[k] = (soft, hard)
                 return out
 
-            def set_DiscontinuityFlag(
+            def set_discontinuities(
                 self,
                 enable: bool | int = False,
                 u: Sequence[float, float] = (4.0, 2.7),
@@ -1341,7 +1344,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     self.root.set('RawProcess_ParameterSettings', f'ds_sf_{name}', str(soft))
                     self.root.set('RawProcess_ParameterSettings', f'ds_hf_{name}', str(hard))
                 return
-            def get_DiscontinuityFlag(self):
+            def get_discontinuities(self):
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_ds')))
                 if not out['enable']: return out
@@ -1355,7 +1358,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                     out[k] = (soft, hard)
                 return out
                 
-            def set_TimelagFlag(
+            def set_timelags(
                 self,
                 enable: bool | int = False,
                 covariance_difference: Sequence[float, float] = (20.0, 10.0),
@@ -1404,7 +1407,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('RawProcess_ParameterSettings', 'tl_def_ch4', str(ch4))
                 self.root.set('RawProcess_ParameterSettings', 'tl_def_n2o', str(gas4))
                 return
-            def get_TimelagFlag(self):
+            def get_timelags(self):
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_tl')))
                 if not out['enable']: return out
@@ -1420,7 +1423,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 return out
 
-            def set_AngleOfAttackFlag(
+            def set_angle_of_attack(
                 self,
                 enable: bool | int = False,
                 aoa_min: float = -30.0,
@@ -1453,7 +1456,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('RawProcess_ParameterSettings', 'aa_max', str(aoa_max))
                 self.root.set('RawProcess_ParameterSettings', 'aa_lim', str(accepted_outliers))
                 return
-            def get_AngleOfAttackFlag(self):
+            def get_angle_of_attack(self):
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_aa')))
                 if not out['enable']: return out
@@ -1464,7 +1467,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
                 return out
 
-            def set_SteadinessOfHorizontalWindFlag(
+            def set_steadiness_of_horizontal_wind(
                 self,
                 enable: bool | int = False,
                 max_rel_inst: float = 0.5,
@@ -1487,7 +1490,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 
                 self.root.set('RawProcess_ParameterSettings', 'ns_hf_lim', str(max_rel_inst))
                 return
-            def get_SteadinessOfHorizontalWindFlag(self):
+            def get_steadiness_of_horizontal_wind(self):
                 out = dict()
                 out['enable'] = bool(int(self.root.get('RawProcess_Tests', 'test_ns')))
                 if not out['enable']: return out
@@ -1496,7 +1499,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 
                 return out
 
-            def set_EstimateRandomUncertainty(
+            def set_estimate_random_uncertainty(
                 self,
                 method: Literal['disable', 'FS01', 'ML94', 'M98'] | int = 'disable',
                 its_definition: Literal['at_1/e', 'at_0', 'whole_period'] | int = 'at_1/e',
@@ -1529,7 +1532,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.root.set('Project', 'ru_tlag_max', str(maximum_correlation_period))
                 
                 return  
-            def get_EstimateRandomUncertainty(self):
+            def get_estimate_random_uncertainty(self):
                 out = dict()
                 methods = ['disable', 'FS01', 'ML94', 'M98']
                 out['method'] = methods[(int(self.root.get('Project', 'ru_meth')))]
@@ -1553,11 +1556,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 
     
 if __name__ == '__main__':
-    ref = eddypro_ConfigParser('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
-
-    ref.Basic.set_StartDate('2021-03-01 00:00')
-    print(ref.Basic.get_StartDate())
-    print(ref.get('Project', 'pr_start_date'))
+    ref = EddyproConfigEditor('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
 
 
-
+    DataFrame
