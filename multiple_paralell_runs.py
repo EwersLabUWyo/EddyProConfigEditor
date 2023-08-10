@@ -6,7 +6,7 @@ import multiprocessing
 
 from tqdm import tqdm
 
-from eddypro_config_editor import eddypro_ConfigParser
+from src.python.eddypro_config_editor import eddypro_ConfigParser
 from run_eddypro_parallel import call, make_eddypro_calls
 
 if __name__ == '__main__':
