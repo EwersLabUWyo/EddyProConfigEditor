@@ -243,7 +243,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             w=float(self.get(section='RawProcess_Settings', option='w_offset'))
         )
     
-    def configure_PlanarFitSettings(
+    def _configure_PlanarFitSettings(
         self,
         w_max: float,
         u_min: float = 0,
@@ -357,7 +357,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_file', value='')
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_mode', value=str(1))
                 self.set(section='RawProcess_TiltCorrection_Settings', option='pf_subset', value=str(1))
-                pf_settings = self.configure_PlanarFitSettings(**configure_PlanarFitSettings_kwargs)
+                pf_settings = self._configure_PlanarFitSettings(**configure_PlanarFitSettings_kwargs)
                 for option, value in pf_settings.items():
                     self.set(section='RawProcess_TiltCorrection_Settings', option=option, value=str(value))
     def get_AxisRotationsForTiltCorrection(self) -> tuple[str, dict]:
@@ -426,7 +426,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
         self.set(section='RawProcess_Settings', option='detrend_meth', value=str(method))
         self.set(section='RawProcess_Settings', option='timeconst', value=str(time_const))
 
-    def configure_TimeLagAutoOpt(
+    def _configure_TimeLagAutoOpt(
             self,
             start: str | datetime.datetime | None = None,
             end: str | datetime.datetime | None = None,
@@ -516,7 +516,7 @@ class eddypro_ConfigParser(configparser.ConfigParser):
             self, 
             method: Literal['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization'] | int = 2, 
             autoopt_file: PathLike[str] | str | None = None, 
-            autoopt_settings_kwargs:dict | None = None
+            configure_TimeLagAutoOpt_kwargs:dict | None = None
         ):
         """
         method: one of 0 or "none" (no time lag compensation), 1 or "constant" (constant time lag from instrument metadata), 2 or "covariance_maximization_with_default" (Default), 3 or "covariance_maximization", or 4 or "automatic_optimization." one of autoopt_file or autoopt_settings_kwargs must be provided if method is a planar fit type.
@@ -533,16 +533,16 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
         # planar fit
         if method == 4:
-            assert bool(autoopt_file) != bool(autoopt_settings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
+            assert bool(autoopt_file) != bool(configure_TimeLagAutoOpt_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
             if autoopt_file is not None:
                 self.set(section='RawProcess_TimelagOptimization_Settings', option='to_file', value=str(autoopt_file))
                 self.set(section='RawProcess_TimelagOptimization_Settings', option='to_mode', value=str(0))
                 self.set(section='RawProcess_TimelagOptimization_Settings', option='to_subset', value=str(1))
-            elif autoopt_settings_kwargs is not None:
+            elif configure_TimeLagAutoOpt_kwargs is not None:
                 self.set(section='RawProcess_TimelagOptimization_Settings', option='to_file', value='')
                 self.set(section='RawProcess_TimelagOptimization_Settings', option='to_mode', value=str(1))
                 self.set(section='RawProcess_TimelagOptimization_Settings', option='to_subset', value=str(1))
-                to_settings = self.configure_TimeLagAutoOpt(**autoopt_settings_kwargs)
+                to_settings = self._configure_TimeLagAutoOpt(**configure_TimeLagAutoOpt_kwargs)
                 for option, value in to_settings.items():
                     self.set(section='RawProcess_TimelagOptimization_Settings', option=option, value=str(value))
     
@@ -812,6 +812,5 @@ class eddypro_ConfigParser(configparser.ConfigParser):
 
 if __name__ == '__main__':
     base = eddypro_ConfigParser('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
-
     copy(base)
 
