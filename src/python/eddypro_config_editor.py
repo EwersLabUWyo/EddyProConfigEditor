@@ -94,6 +94,8 @@ Advanced Settings
     * Processed raw data outputs
 """
 
+RPP = 'RawProcess_ParameterSettings'
+
 def compare_configs(df1: DataFrame, df2: DataFrame):
     """compare differences between two configs"""
     df1_new = df1.loc[df1['Value'] != df2['Value'], ['Section', 'Option', 'Value']]
@@ -753,27 +755,75 @@ class eddypro_ConfigParser(configparser.ConfigParser):
     def set_SpikeFlag(
             self, 
             enable: bool | int  = True,
-            method: Literal['VM97', 'M13'] = 'VM97', 
+            method: Literal['VM97', 'M13'] | int = 'VM97', 
             accepted: float = 1.0, 
             linterp: bool | int = True, 
             max_consec_outliers: int = 3, 
-            W: float = 5.0,
+            w: float = 5.0,
             co2: float = 3.5,
             h2o: float = 3.5,
             ch4: float = 8.0,
             gas4: float = 8.0,
-            other: float = 3.5
+            others: float = 3.5
     ):
-        """Settings for spike count and removal.
+        """Settings for spike count and removaal.
         enable: whether to enable despiking. Default True
         method: one of 'VM97' or 'M13' for Vickers & Mart 1997 or Mauder et al 2013. Default 'VM97'. If M13 is selected, only the accepted and linterp options are used.
         accepted: If, for each variable in the flux averaging period, the number of spikes is larger than accepted% of the number of data samples, the variable is hard-flagged for too many spikes. Default 1%
         linterp: whether to linearly interpolate removed spikes (True, default) or to leave them as nan (False)
         max_consec_outliers: for each variable, a spike is detected as up to max_consec_outliers outliers. If more consecutive values are found to exceed the plausibility threshold, they are not flagged as spikes. Default 3.
-        w/co2/h2o/ch4/gas4/other: z-score cutoffs for flagging outliers. Defaults are 5.0, 3.5, 3.5, 8.0, 8.0, 3.5, respectively.
+        w/co2/h2o/ch4/gas4/others: z-score cutoffs for flagging outliers. Defaults are 5.0, 3.5, 3.5, 8.0, 8.0, 3.5, respectively.
         """
 
-        pass
+        assert isinstance(enable, int) or isinstance(enable, bool), 'enable should be int or bool'
+        assert method in ['VM97', 'M13', 0, 1], 'method should be one of VM97 (0) or M13 (1)'
+        assert accepted >= 0 and accepted <= 50, 'accepted spikes should be be between 0 and 50%'
+        assert isinstance(linterp, bool) or isinstance(linterp, int), 'linterp should be int or bool'
+        assert isinstance(max_consec_outliers, int) and 3 <= max_consec_outliers and max_consec_outliers <= 1000, 'max_consec_outliers should be int from 3 to 1000'
+        for v in [w, co2, h2o, ch4, gas4, others]:
+            assert 1 <= v and v <= 20, 'variable limits should be between 1 and 20'
+
+        # enable
+        if not enable:
+            self.set('RawProcess_Tests', 'test_sr', '0')
+            return
+        self.set('RawProcess_Tests', 'test_sr', '1')
+        
+        # enable vm97?
+        methods = {'VM97':0, 'M13':1}
+        if method in methods:
+            method = methods[method]
+        use_m13 = method
+        self.set('RawProcess_ParameterSettings', 'despike_vm', str(use_m13))
+
+        # accepted spikes and linterp
+        self.set('RawProcess_ParameterSettings', 'sr_lim_hf', str(accepted))
+        if linterp: self.set('RawProcess_ParameterSettings', 'filter_sr', '1')
+        else: self.set('RawProcess_ParameterSettings', 'filter_sr', '0')
+        if use_m13: return  # m13 takes no futher parameters
+
+        # outliers
+        self.set('RawProcess_ParameterSettings', 'sr_num_spk', str(max_consec_outliers))
+
+        # limits
+        for name, v in zip(['w', 'co2', 'h2o', 'ch4', 'n2o', 'u'], [w, co2, h2o, ch4, gas4, others]):
+            self.set('RawProcess_ParameterSettings', f'sr_lim_{name}', str(v))
+        
+        return
+    def get_SpikeFlag(self):
+        out_dict = dict()
+        out_dict['enable'] = bool(int(self.get('RawProcess_Tests', 'test_sr')))
+        if not out_dict['enable']: return out_dict
+
+        methods = ['VM97', 'M13']
+        out_dict['method'] = methods[int(self.get('RawProcess_ParameterSettings', 'despike_vm'))]
+        out_dict['accepted'] = float(self.get('RawProcess_ParameterSettings', 'sr_lim_hr'))
+        out_dict['linterp'] = bool(int(self.get('RawProcess_ParameterSettings', 'filter_sr')))
+        if out_dict['method'] == 'M13': return out_dict
+
+        for name, k in zip(['w', 'co2', 'h2o', 'ch4', 'n2o', 'u'], ['w', 'co2', 'h2o', 'ch4', 'gas4', 'others']):
+            out_dict[k] = float(self.get('RawProcess_ParameterSettings', f'sr_lim_{name}'))
+        return out_dict
 
     def set_AmplitudeResolutionFlag(
         self,
