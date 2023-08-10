@@ -16,10 +16,10 @@ from copy import copy
 from pandas import date_range, Timedelta, DataFrame
 
 """
+TODO
 Settings to add
 ** = Priority: settings that need to be automated.
 E.g. raw file format probably doesn't need to be automated
-
 
 Project creation
 ----------------------------------------
@@ -92,12 +92,17 @@ Advanced Settings
     * Fluxnet output settings
     * Spectra and cospectra output
     * Processed raw data outputs
+
+TODO: edge cases
+    * when setting timespan-sensitive settings, check that the timespan is appropriate.
+    e.g. when setting planar fit, check that the overlap between the project timespan and the planar fit window is greater than 2 weeks
+    * when writing output, make sure that the program will be able to run.
 """
 
 
 def or_isinstance(object, *types):
     """helper function to chain together multiple isinstance arguments
-    e.g. isinstance(a, float) or isinstance(a, int)"""
+    e.g. or_isinstance(a, float, int) does the same as (isinstance(a, float) or isinstance(a, int))"""
     for t in types:
         if isinstance(object, t):
             return True
@@ -142,8 +147,17 @@ def in_range(v, interval):
     return bounds_satisfied == 2
 
 
-def compare_configs(df1: DataFrame, df2: DataFrame):
-    """compare differences between two configs"""
+def compare_configs(df1: DataFrame, df2: DataFrame) -> DataFrame:
+    """compare differences between two configs
+    
+    Parameters
+    ----------
+    df1, df2: pandas.DataFrame objects output by EddyproConfigEditor.to_pandas()
+
+    Returns
+    -------
+    pandas.DataFrame containing lines that differed between df1 and df2
+    """
     df1_new = df1.loc[df1['Value'] != df2['Value'],
                       ['Section', 'Option', 'Value']]
     df2_new = df2.loc[df1['Value'] != df2['Value'],
@@ -158,7 +172,7 @@ def compare_configs(df1: DataFrame, df2: DataFrame):
 class EddyproConfigEditor(configparser.ConfigParser):
     '''
     a child class of configparser.ConfigParser.
-    Adds specific methods to work with eddypro INI files
+    Adds specific methods to work with .eddypro INI files
 
     Parameters
     ----------
@@ -179,8 +193,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
     def to_eddypro(
             self,
             ini_file: str | PathLike[str],
-            out_path: str | PathLike[str] | Literal['keep'] = 'keep'):
-        """write to a .eddypro file.
+            out_path: str | PathLike[str] | Literal['keep'] = 'keep') -> None:
+        """
+        Write this object to a .eddypro file.
+
+        Parameters
+        ----------
         ini_file: the file name to write to
         out_path: the path for eddypro to output results to. If 'keep' (default), use the outpath already in the config file
         """
@@ -198,19 +216,31 @@ class EddyproConfigEditor(configparser.ConfigParser):
         metadata_fn: str | PathLike[str] | None = None,
         num_workers: int | None = None,
         file_duration: int | None = None,
+        min_worker_timespan: int | None = None,
     ) -> None:
         """
-        writes to a set of .eddypro files split up into bite-size time chunks.
-         .eddypro files, each handling a separate time chunk.
+        split this config file up into a set of .eddypro files, each handling a smaller time chunk that the main config.
         all .eddypro files will be identical except in their project IDs, file names, and start/end dates.
 
-        Note that some processing methods are not compatible "out-of-the-box" with paralle processing: some methods like the planar fit correction and ensemble spectral corrections will need the results from a previous, longer-term eddypro run to function effectively.
+        Note that some processing methods are not compatible "out-of-the-box" with paralle processing in this format,
+        specifically those methods which rely on aggregate data from longer time series. This includes:
+            * planar fit methods require at least 2 weeks worth of data, ideally more.
+            * automatic time-lag optimization
+            * most spectral assessments require at least one month of data, ideally more.
+        To solve this issue, you can do one of the following:
+            * set the minimum worker timspan to be at least one month
+            * provide sufficient and representative spectral assesment, binned cospectra, planar fit, and/or automatic time lag optimization files from a previous run by modifying the axis_rotations_for_tilt_correction settings, the timelag_compenstaions settings, the spectra_calculations settings, and/or the spectra_qaqc settings.
+            * use methods that do not require long time spans of data.
 
+        
+        Parameters
+        ----------
         ini_dir: the directory to output configured .eddypro files to. Does not have to exist.
         out_path: the path to direct eddypro to write results to.
         metadata_fn: path to a static .metadata file for this project. Must be provided if file_duration is None.
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
+        min_worker_timespan: the minimum amount of data each worker can process, in days. If None (default), then set no minimum. Recommended if using methods that require aggregate data (see above)
         """
 
         # get file duration
@@ -237,10 +267,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
         job_size = ceil(file_duration * n_files / num_workers)
         job_size = f'{int(ceil(job_size/file_duration)*file_duration)}min'
 
+        if min_worker_timespan is not None:
+            job_size = f'{int(min_worker_timespan)}d'
         job_starts = date_range(
-            '2020-06-21 00:00',
-            '2020-07-22 00:00',
+            start,
+            end - Timedelta(job_size),
             freq=job_size)
+        if len(job_starts) <= 1: warnings.warn(f"WARNING: job size too long. Submitting {len(job_starts)} jobs")
         # dates are inclusive, so subtract 30min for file duration
         job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
         job_start_dates = job_starts.strftime(date_format=r'%Y-%m-%d')
@@ -340,7 +373,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def set_start_date(
             self,
             start: str | datetime.datetime | None = None,
-        ):
+        ) -> None:
             """format yyyy-mm-dd HH:MM for strings"""
             if isinstance(start, str):
                 assert len(
@@ -367,7 +400,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def set_end_date(
             self,
             end: str | datetime.datetime | None = None
-        ):
+        ) -> None:
             """format yyyy-mm-dd HH:MM for strings"""
             if isinstance(end, str):
                 assert len(
