@@ -97,7 +97,7 @@ hf_correct_ghg_ba=1
 hf_correct_ghg_zoh=1
 hf_meth=1
 ini_version=4.5.0
-last_change_date=2023-08-11T14:28:58
+last_change_date=2023-08-11T15:05:06
 lf_meth=1
 make_dataset=1
 master_sonic=csat3_1
@@ -361,7 +361,7 @@ pf_mode=1
 pf_north_offset=0
 pf_start_date=2020-06-21
 pf_start_time=
-pf_subset=1
+pf_subset=0
 pf_u_min=-0.001
 pf_w_max=0.099
 

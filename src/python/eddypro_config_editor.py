@@ -949,6 +949,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         assert end == 'project', 'if one of start, end is "project", the other must be as well.'
                 if isinstance(end, str):
                     assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    if end == 'project':
+                        assert start == 'project', 'if one of start, end is "project", the other must be as well.'
                 assert len(sectors) <= 12, f'was given {len(sectors)} sectors. No more than 12 are permitted'
                 total_width = 0
                 for i, s in enumerate(sectors):
@@ -961,11 +963,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert total_width == 360., f'Sectors must cover exactly 360 degrees in aggregate. Given sectors only total {total_width}°'
 
                 # process dates
-                pf_subset = 0
+                pf_subset = 1
                 if start == 'project':
                     pf_start = self.root.Basic.get_start_date()
                     pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
-                    pf_subset = 1
+                    pf_subset = 0
                 elif isinstance(start, datetime.datetime):
                     pf_start = start
                     pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
@@ -1246,7 +1248,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 """
                 Parameters
                 ----------
-                start, end: the time period to consider when performing automatic timelag optimization. Either a datetime.datetime object, a string YYYY-mm-dd HH:MM, or 'project.' If 'project,' (default) use the current project time span.
+                start, end: start and end date-times for time lag optimization computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
                 pg_range: the number of median absolute deviations from the mean a time lag can be for a given class to be accepted. Default mean±1.5mad
                 n_rh_classes: the number of relative humidity classes to consider when optimizing H2O time lags
                 XXX_min_flux: the minimum flux for a given gas, quantity, in µmol/m2/2, except for le_min_flux, which is in units of W/m2
@@ -1263,15 +1265,17 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 """
 
-
-
                 # check inputs
                 assert or_isinstance(start, int, datetime.datetime), 'starting timestamp must be string or datetime.datetime'
                 assert or_isinstance(end, int, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
                 if isinstance(start, str):
                     assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    if start == 'project':
+                        assert end == 'project', 'if one of start, end is "project", the other must be as well.'
                 if isinstance(end, str):
                     assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    if end == 'project':
+                        assert start == 'project', 'if one of start, end is "project", the other must be as well.'
                 assert or_isinstance(pg_range, float, int) and in_range(pg_range, '[0.1, 100]'), f'pg_range must be float or int and between 0.1 and 100'
                 assert or_isinstance(n_rh_classes, int) and in_range(n_rh_classes, '[1, 20]'), f'h2o_nclass must be int and between 1 and 20'
                 assert or_isinstance(le_min_flux, float, int) and in_range(le_min_flux, '[0, 1000]'), f'le_min_flux must be float or int and in range [0, 1000]'
@@ -1285,7 +1289,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         assert v[0] < v[1], f'time lag search window must have positive width. Received {k}={v}.'
                 
                 # process dates
+                to_subset = 1
                 if start == 'project':
+                    to_subset = 0
                     to_start = self.root.Basic.get_start_date()
                     to_start_date, to_start_time = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
                 elif isinstance(start, datetime.datetime):
@@ -1308,21 +1314,19 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 if overlap < 30:
                     warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between time lag optimization time window ({to_start} -> {to_end}) and project time window ({self.root.Basic.get_start_date()} -> {self.root.Basic.get_end_date()}). At least 30 days are required')
                 
-                # lag settings default to "automatic detection" for the value
-                # -1000.1
+                # lag settings default to "automatic detection" for the value -1000.1
                 settings_with_special_defaults = [
-                    ch4_min_lag,
-                    ch4_max_lag,
-                    co2_min_lag,
-                    co2_max_lag,
-                    gas4_min_lag,
-                    gas4_max_lag,
-                    h2o_min_lag,
-                    h2o_max_lag]
+                    h2o_lags
+                    ch4_lags
+                    co2_lags
+                    gas4_lags]
                 for i, setting in enumerate(settings_with_special_defaults):
                     if setting is None:
-                        settings_with_special_defaults[i] = str(-1000.1)
-                ch4_min_lag, ch4_max_lag, co2_min_lag, co2_max_lag, gas4_min_lag, gas4_max_lag, h2o_min_lag, h2o_max_lag = settings_with_special_defaults
+                        settings_with_special_defaults[i] = (-10000.1, -10000.1)
+                h2o_min_lag, h2o_max_lag = h2o_lags
+                co2_min_lag, co2_max_lag = ch4_lags
+                ch4_min_lag, ch4_max_lag = co2_lags
+                gas4_min_lag, gas4_max_lag = gas4_lags
 
                 settings_dict = dict(
                     to_start_date=to_start_date,
@@ -1341,12 +1345,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     to_h2o_min_lag=h2o_min_lag,
                     to_h2o_max_lag=h2o_max_lag,
                     to_le_min_flux=le_min_flux,
-                    to_h2o_nclass=int(h2o_nclass),
+                    to_h2o_nclass=int(n_rh_classes),
                     to_pg_range=pg_range,
+                    to_subset=to_subset
                 )
 
                 return settings_dict
-
             def set_timelag_compensations(self,
                                           method: Literal['none',
                                                           'constant',
@@ -1360,25 +1364,32 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 autoopt_file: Mututally exclusive with autoopt_settings_kwargs. If method is a planar fit type, path to an eddypro-compatible automatic time lag optimization file. This can be build by hand, or taken from the output of a previous eddypro run. Typically labelled as "eddypro_<project id>_timelag_opt_<timestamp>_adv.txt" or similar
                 autoopt_settings_kwargs: Mututally exclusive with autoopt_file. Arguments to be passed to configure_TimelagAutoOpt.
                 """
+                history_args = ('Advanced', 'timelag_compensations', self.get_timelag_compensations)
+                self.root._add_to_history(*history_args, True)
+
+                # check inputs
+                if isinstance(method, str):
+                    assert method in ['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization'], "method must be one of None, 'none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization', or 0, 1, 2, 3, or 4."
+                    method = method_dict[method]
+                assert method in range(5), 'method must be one of None, constant, covariance_maximization_with_default, covariance_maximization, automatic_optimization, or 0, 1, 2, 3, or 4.'
+                if method == 4:
+                    assert bool(autoopt_file) != bool(configure_TimelagAutoOpt_kwargs), 'If method is automatic_optimization, exactly one of pf_file or pf_settings should be specified.'
+                    if configure_TimelagAutoOpt_kwargs is not None:
+                        assert isinstance(configure_TimelagAutoOpt_kwargs, dict), 'configure_TimelagAutoOpt_kwargs must be None or dict.'
+
                 method_dict = {
                     'none': 0,
                     'constant': 1,
                     'covariance_maximization_with_default': 2,
                     'covariance_maximization': 3,
                     'automatic_optimization': 4}
-                if isinstance(method, str):
-                    assert method in ['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization',
-                                      'automatic_optimization'], 'method must be one of None, double_rotations, triple_rotations, planar_fit, planar_fit_nvb, or 0, 1, 2, 3, or 4.'
-                    method = method_dict[method]
-                assert method in range(
-                    5), 'method must be one of None, constant, covariance_maximization_with_default, covariance_maximization, automatic_optimization, or 0, 1, 2, 3, or 4.'
+                
+                
 
                 self.root.set('RawProcess_Settings', 'tlag_meth', str(method))
 
                 # planar fit
                 if method == 4:
-                    assert bool(autoopt_file) != bool(
-                        configure_TimelagAutoOpt_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
                     if autoopt_file is not None:
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings',
@@ -1386,21 +1397,17 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             str(autoopt_file))
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings', 'to_mode', str(0))
-                        self.root.set(
-                            'RawProcess_TimelagOptimization_Settings', 'to_subset', str(1))
                     elif configure_TimelagAutoOpt_kwargs is not None:
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings', 'to_file', '')
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings', 'to_mode', str(1))
-                        self.root.set(
-                            'RawProcess_TimelagOptimization_Settings', 'to_subset', str(1))
                         to_settings = self._configure_timelag_auto_opt(
                             **configure_TimelagAutoOpt_kwargs)
                         for option, value in to_settings.items():
                             self.root.set(
                                 'RawProcess_TimelagOptimization_Settings', option, str(value))
-
+                self.root._add_to_history(*history_args)
             def get_timelag_compensations(self) -> dict:
                 """
                 extracts time lag compensation settings from the config file.
