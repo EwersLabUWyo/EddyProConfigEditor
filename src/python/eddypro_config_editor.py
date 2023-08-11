@@ -97,7 +97,9 @@ Advanced Settings
 TODO: edge cases
     * when setting timespan-sensitive settings, check that the timespan is appropriate.
     e.g. when setting planar fit, check that the overlap between the project timespan and the planar fit window is greater than 2 weeks
-    * when writing output, make sure that the program will be able to run.
+    * when writing output, make sure that the program will be able to run,
+    * when writing output, check that dates are consistent:
+        * if time-dependent settings are selected, such a start='project' for 
 """
 
 
@@ -550,9 +552,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         * invalid spectra calculation dates (requires one month of overlap)
         """
         if reference == 'project': reference = self.Basic.get_project_date_range()
-        overlap = compute_date_overlap(interval, reference)
+        overlap = compute_date_overlap(interval, reference).days
 
-        return overlap.days >= min_overlap
+        return overlap >= min_overlap
 
     def _add_to_history(self, pane, setting, getter, modify_only_if_first=False):
         # tracks setting history.
@@ -914,7 +916,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ----------
                 w_max: the maximum mean vertical wind component for a time interval to be included in the planar fit estimation
                 u_min: the minimum mean horizontal wind component for a time interval to be included in the planar fit estimation
-                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date
+                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
                 num_per_sector_min: the minimum number of valid datapoints for a sector to be computed.
                 fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
                 north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
@@ -943,6 +945,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert or_isinstance(end, int, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
                 if isinstance(start, str):
                     assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    if start == 'project':
+                        assert end == 'project', 'if one of start, end is "project", the other must be as well.'
                 if isinstance(end, str):
                     assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
                 assert len(sectors) <= 12, f'was given {len(sectors)} sectors. No more than 12 are permitted'
@@ -957,9 +961,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert total_width == 360., f'Sectors must cover exactly 360 degrees in aggregate. Given sectors only total {total_width}°'
 
                 # process dates
+                pf_subset = 0
                 if start == 'project':
                     pf_start = self.root.Basic.get_start_date()
                     pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    pf_subset = 1
                 elif isinstance(start, datetime.datetime):
                     pf_start = start
                     pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
@@ -978,7 +984,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # check that the date range is valid for this project
                 overlap = self.root.check_dates(interval=(pf_start, pf_end), reference='project', min_overlap=14).days
                 if overlap < 14:
-                    warnings.warn(f'WARNING: insufficient overlap ({overlap.days} days) between planar fit time window ({pf_start} -> {pf_end}) and project time window ({self.root.Basic.get_start_date()} -> {self.root.Basic.get_end_date()}). At least 14 days are required')
+                    warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between planar fit time window ({pf_start} -> {pf_end}) and project time window ({self.root.Basic.get_start_date()} -> {self.root.Basic.get_end_date()}). At least 14 days are required')
                 
                 # fix method
                 fix_dict = dict(CW=0, CCW=1, double_rotations=2)
@@ -995,6 +1001,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     pf_min_num_per_sec=int(num_per_sector_min),
                     pf_fix=fix_method,
                     pf_north_offset=north_offset,
+                    pf_subset=pf_subset
                 )
 
                 # sectors
@@ -1057,15 +1064,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             str(pf_file))
                         self.root.set(
                             'RawProcess_TiltCorrection_Settings', 'pf_mode', str(0))
-                        self.root.set(
-                            'RawProcess_TiltCorrection_Settings', 'pf_subset', str(1))
                     elif configure_planar_fit_settings_kwargs is not None:
                         self.root.set(
                             'RawProcess_TiltCorrection_Settings', 'pf_file', '')
                         self.root.set(
                             'RawProcess_TiltCorrection_Settings', 'pf_mode', str(1))
-                        self.root.set(
-                            'RawProcess_TiltCorrection_Settings', 'pf_subset', str(1))
                         pf_settings = self._configure_planar_fit_settings(
                             **configure_planar_fit_settings_kwargs)
                         for option, value in pf_settings.items():
@@ -1224,79 +1227,87 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             def _configure_timelag_auto_opt(
                 self,
-                start: str | datetime.datetime | None = None,
-                end: str | datetime.datetime | None = None,
-                ch4_min_lag: float | None = None,
-                ch4_max_lag: float | None = None,
-                ch4_min_flux: float = 0.200,
-                co2_min_lag: float | None = None,
-                co2_max_lag: float | None = None,
-                co2_min_flux: float = 2.000,
-                gas4_min_lag: float | None = None,
-                gas4_max_lag: float | None = None,
-                gas4_min_flux: float = 0.020,
-                h2o_min_lag: float | None = None,  # -1000.1 is default
-                h2o_max_lag: float | None = None,
-                le_min_flux: float = 20.0,
-                h2o_nclass: int = 10,
+                start: str | datetime.datetime | Literal['project'] = 'project',
+                end: str | datetime.datetime | Literal['project'] = 'project',
                 pg_range: float = 1.5,
+                n_rh_classes: int = 10,
+                le_min_flux: float = 20.0,
+                co2_min_flux: float = 2.000,
+                ch4_min_flux: float = 0.200,
+                gas4_min_flux: float = 0.020,
+                co2_lags: Sequence[float, float] | None = None,
+                ch4_lags: Sequence[float, float] | None = None,
+                h2o_lags: Sequence[float, float] | None = None,
+                gas4_lags: Sequence[float, float] | None = None,
+                
+                
+                
             ) -> dict:
                 """
-                configure settings for automatic time lag optimization.
-                start, end: the time period to consider when performing automatic timelag optimization. Default (None) is to use the whole timespan of the data.
-                CO2, CH4, and 4th gas:
-                    x_min/max_lag: the minimum and maximum allowed time lags in seconds. Must be between -1000 and +1000, and x_max_lag > x_min_lag. If None (default), then detect automatically.
-                    x_min_flux: the minimum allowed flux to perform time lag adjustments on, in µmol/m2/s.
-                H2O:
-                    h2o_min/max_lag: identical to co2/ch4/gas4_min/max_lag.
-                    le_min_flux: the minimum allowed flux to perform time lag adjustments on, in W/m2
-                    h2o_nclass: the number of RH classes to consider when performing time lag optimization.
+                Parameters
+                ----------
+                start, end: the time period to consider when performing automatic timelag optimization. Either a datetime.datetime object, a string YYYY-mm-dd HH:MM, or 'project.' If 'project,' (default) use the current project time span.
                 pg_range: the number of median absolute deviations from the mean a time lag can be for a given class to be accepted. Default mean±1.5mad
+                n_rh_classes: the number of relative humidity classes to consider when optimizing H2O time lags
+                XXX_min_flux: the minimum flux for a given gas, quantity, in µmol/m2/2, except for le_min_flux, which is in units of W/m2
+                XXX_lags: a sequence of (min, max) seconds of lag to define the time lag searching windows. If None, tell eddypro to determine automatically.
+                
+                limits on inputs:
+                pg_range: [0.1, 100]
+                n_rh_classes: [1, 20]
+                le_min_flux: [0, 1000]
+                co2_min_flux: 
+                ch4_min_flux: [0, 100]
+                gas4_min_flux: [0, 100]
+                min/max_lag: [-10_000, +10_000]
+
                 """
 
-                # start/end date/time
-                if start is not None:
-                    if isinstance(start, str):
-                        assert len(
-                            start) == 16, 'datetime strings must be in yyyy-mm-dd HH:MM format'
-                        to_start_date, to_start_time = start.split(' ')
-                    else:
-                        to_start_date = start.strftime(r'%Y-%m-%d')
-                        to_start_time = start.strftime(r'%H:%M')
-                else:
-                    to_start_date, to_start_time = (
-                        self.root.Basic.get_start_date()
-                        .strftime(r'%Y-%m-%d %H:%M')
-                        .split(' '))
-                    if not self.root._project_start_date:
-                        warnings.warn(
-                            f"Warning: Using the start date and time provided by the original reference file: {to_start_date} {to_start_time}")
-                if end is not None:
-                    if isinstance(end, str):
-                        assert len(
-                            end) == 16, 'datetime strings must be in yyyy-mm-dd HH:MM format'
-                        to_end_date, to_end_time = end.split(' ')
-                    else:
-                        to_end_date = end.strftime(r'%Y-%m-%d')
-                        to_end_time = end.strftime(r'%H:%M')
-                else:
-                    to_end_date, to_end_time = (
-                        self.root.Basic.get_end_date()
-                        .strftime(r'%Y-%m-%d %H:%M')
-                        .split(' '))
-                    if not self.root._project_start_date:
-                        warnings.warn(
-                            f"Warning: Using the end date and time provided by the original reference file: {to_end_date} {to_end_time}")
-                # check that time window is valid
-                start = datetime.datetime.strptime(to_start_date + ' ' + to_start_time, r'%Y-%m-%d %H:%M')
-                end = datetime.datetime.strptime(to_end_date + ' ' + to_end_time, r'%Y-%m-%d %H:%M')
-                if (end - start).days <= 7:
-                    warnings.warn(f'WARNING: time lag auto-optimization window ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}) is shorter than 7 days!')
-                project_start, project_end = self.root.Basic.get_date_range().values()
-                true_start, true_end = max(start, project_start), min(end, project_end)
-                if (true_end - true_start).days <= 7:
-                    warnings.warn(f'WARNING: time lag auto-optimization window ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({project_end.strftime(r"%Y-%m-%d %H:%M")} -> {project_end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
 
+
+                # check inputs
+                assert or_isinstance(start, int, datetime.datetime), 'starting timestamp must be string or datetime.datetime'
+                assert or_isinstance(end, int, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
+                if isinstance(start, str):
+                    assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                if isinstance(end, str):
+                    assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                assert or_isinstance(pg_range, float, int) and in_range(pg_range, '[0.1, 100]'), f'pg_range must be float or int and between 0.1 and 100'
+                assert or_isinstance(n_rh_classes, int) and in_range(n_rh_classes, '[1, 20]'), f'h2o_nclass must be int and between 1 and 20'
+                assert or_isinstance(le_min_flux, float, int) and in_range(le_min_flux, '[0, 1000]'), f'le_min_flux must be float or int and in range [0, 1000]'
+                assert or_isinstance(co2_min_flux, float, int) and in_range(co2_min_flux, '[0, 100]'), f'co2_min_flux must be float or int and in range [0, 100]'
+                assert or_isinstance(ch4_min_flux, float, int) and in_range(ch4_min_flux, '[0, 100]'), f'ch4_min_flux must be float or int and in range [0, 100]'
+                assert or_isinstance(gas4_min_flux, float, int) and in_range(gas4_min_flux, '[0, 100]'), f'gas4_min_flux must be float or int and in range [0, 100]'
+                for k, v in dict(co2_lags=co2_lags, ch4_lags=ch4_lags, h2o_lags=h2o_lags, gas4_lags=gas4_lags).items():
+                    if v is not None:
+                        assert isinstance(v, Sequence), f'{k} must be None, or a sequence of 2 numbers'
+                        assert len(v) == 2, f'{k} must be None, or a sequence of 2 numbers'
+                        assert v[0] < v[1], f'time lag search window must have positive width. Received {k}={v}.'
+                
+                # process dates
+                if start == 'project':
+                    to_start = self.root.Basic.get_start_date()
+                    to_start_date, to_start_time = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                elif isinstance(start, datetime.datetime):
+                    to_start = start
+                    to_start_date, to_start_time = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                else:
+                    to_start = start
+                    to_start_date, to_start_time = to_start.split(' ')
+                if end == 'project':
+                    to_end = self.root.Basic.get_end_date()
+                    to_end_date, to_end_time = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                elif isinstance(end, datetime.datetime):
+                    to_end = end
+                    to_end_date, to_end_time = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                else:
+                    to_end = end
+                    to_end_date, to_end_time = to_end.split(' ')
+                # check that the date range is valid for this project
+                overlap = self.root.check_dates(interval=(to_start, to_end), reference='project', min_overlap=14).days
+                if overlap < 30:
+                    warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between time lag optimization time window ({to_start} -> {to_end}) and project time window ({self.root.Basic.get_start_date()} -> {self.root.Basic.get_end_date()}). At least 30 days are required')
+                
                 # lag settings default to "automatic detection" for the value
                 # -1000.1
                 settings_with_special_defaults = [
