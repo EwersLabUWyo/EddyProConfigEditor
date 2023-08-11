@@ -9,9 +9,10 @@ import multiprocessing
 from math import ceil
 import warnings
 import tempfile
-from time import sleep
-import sys
-from copy import copy
+from copy import deepcopy
+from time import perf_counter as timer
+# from time import sleep
+# import sys
 
 from pandas import date_range, Timedelta, DataFrame
 
@@ -108,7 +109,6 @@ def or_isinstance(object, *types):
             return True
     return False
 
-
 def in_range(v, interval):
     """helper function to determine if a value is in some interval.
     intervals are specified using a string:
@@ -146,7 +146,6 @@ def in_range(v, interval):
 
     return bounds_satisfied == 2
 
-
 def compare_configs(df1: DataFrame, df2: DataFrame) -> DataFrame:
     """compare differences between two configs
     
@@ -168,23 +167,157 @@ def compare_configs(df1: DataFrame, df2: DataFrame) -> DataFrame:
         '_' + name1, '_' + name2]) .sort_values(['Section', 'Option']))
     return df_compare
 
+def compute_date_overlap(
+        interval_1: Sequence[str, str] | Sequence[datetime.datetime, datetime.datetime], 
+        interval_2: Sequence[str, str] | Sequence[datetime.datetime, datetime.datetime]) -> datetime.timedelta:
+    """given two time intervals of strings or datetime objects, compute their overlap and report them as a timdelta object
+    Strings must be of the form YYYY-mm-dd HH:MM"""
+
+    # assure inputs conform to standards
+    assert isinstance(interval_1, Sequence), 'intervals must be sequences of strings or datetimes'
+    assert isinstance(interval_2, Sequence), 'intervals must be sequences of strings or datetimes'
+    assert len(interval_1) == 2, 'intervals must be length 2'
+    assert len(interval_2) == 2, 'intervals must be length 2'
+    interval_1 = list(interval_1)
+    interval_2 = list(interval_2)
+    for i in range(2):
+        assert or_isinstance(interval_1[i], str, datetime.datetime), 'inputs must be strings of format YYYY-mm-dd HH:MM or datetime.datetime objects'
+        assert or_isinstance(interval_2[i], str, datetime.datetime), 'inputs must be strings of format YYYY-mm-dd HH:MM or datetime.datetime objects'
+        if isinstance(interval_1[i], str):
+            assert len(interval_1[i].strip()) == 16, 'inputs must be strings of format YYYY-mm-dd HH:MM'
+        if isinstance(interval_2[i], str):
+            assert len(interval_2[i].strip()) == 16, 'inputs must be strings of format YYYY-mm-dd HH:MM'
+    
+    # convert to datetime objects
+    for i in range(2):
+        if isinstance(interval_1[i], str):
+            interval_1[i] = datetime.datetime.strptime(interval_1[i].strip(), r'%Y-%m-%d %H:%M')
+        if isinstance(interval_2[i], str):
+            interval_2[i] = datetime.datetime.strptime(interval_2[i].strip(), r'%Y-%m-%d %H:%M')
+
+    # compute overlap
+    start = max(interval_1[0], interval_2[0])
+    end = min(interval_1[1], interval_2[1])
+    overlap = end - start
+
+    return overlap
+
 
 class EddyproConfigEditor(configparser.ConfigParser):
     '''
-    a child class of configparser.ConfigParser.
-    Adds specific methods to work with .eddypro INI files
+    Class designed to mimic the functionality of the eddypro 7 GUI, built as a child class of configparser.ConfigParser.
 
     Parameters
     ----------
-    reference_ini: path to a .eddypro file to modify
-    '''
+    reference_ini: path to a .eddypro file to modify 
 
+    Variables
+    ---------
+    history: a dictionary to keep track of changes made to the config file. Structured as follow:
+        {pane:
+            {setting:
+                [
+                    (_num_changes, setting_kwargs)
+                ]
+            }
+        }
+        where pane is one of 'Project', 'Basic', 'Advanced,' 
+        setting is the name of a setting in that pane (project_start_date or wind_speed_measurement_offsets, for example),
+        and where history[pane][setting] contains a list of change made to that setting. This list is composed of tuples of the form
+        (_num_changes, setting_kwargs), where _num_changes records the TOTAL number of changes made to the config file up to that point
+        and setting_kwargs records the new settings recorded at that time, as returned by the get_XXXX function for that setting. The
+        first entry in this list is always the initial state of that setting before any changes were made, meaning that _num_changes is
+        not unique.
+
+        example: the initial state of the wind_speed_measurement_offsets setting was u=0, v=0, w=0. 
+        the third change made to the config file modified this to u=5, v=10, w=5.
+        >>> ref = EddyproConfigEditor('config.eddypro')
+        >>> ref.Basic.set_project_date_range('2021-01-01 00:00', '2023-10-13 14:54')
+        >>> ref.Advanced.Processing.set_wind_speed_measurement_offsets(5, 10, 5)
+        >>> print(ref.history['Advanced']['wind_speed_measurement_offsets'])
+        [(0, {'u': 0.0, 'v': 0.0, 'w': 0.0}), (3, {'u': 5.0, 'v': 10.0, 'w': 5.0})]
+
+        To better view and interpret the config file history, a print_history method is provided.
+
+
+
+    Notes
+    -----
+    this class splits up settings by how they are laid out in the EddyPro 7 GUI,
+    and contains 3 nested classes:
+    * `Project` contains settings from the Project Creation pane
+    * `Basic` contains settings from the basic settings pane
+    * `Advanced` contains settings from the advanced settings pane, which is broken up into four more nested classes:
+        * `Processing` -- settings from the processing option pane
+        * `Statistical` -- settings from the statistical analysis pane
+        * `Spectral` -- settings from the spectral analysis and corrections pane
+        * `Output` -- settings from the output options pane
+
+    To imitate how the eddypro GUI changes INI settings, each of these nested classes contains
+    `set_XXXX` methods which reproduce the functionality of the respective buttons and panels in the eddypro GUI.
+    For example, the `Advanced.Processing.set_turbulent_fluctuations` method will reproduce the behavior
+    of the "Turbulent fluctuations" options in the Eddypro 7 GUI, which can be found in the Advanced/Processing Options pane.
+    the `set_turbulent_fluctuations` lets you specify the detrend method and the time constant. Some functions are more complicated,
+    like `Advanced.Processing.set_axis_rotations_for_tilt_correction,` which needs to accomodate planar fit options. Read the documentation of 
+    each method carefully.
+
+    Additionally, each `set` method is paired with a `get` method, which will retrieve the *current* settings for that method already stored in the file.
+    the object returned by a given `get` method can be passed as **kwargs to the paired `set` method.
+
+    e.g.: 
+    >>> # instantiate from file
+    >>> ini = EddyProConfigEditor('./config.eddypro')
+    >>> # retrieve current turbulent fluctiations settings
+    >>> tf_kwargs = ini.Advanced.Processing.get_turbulent_fluctuations()
+    >>> tf_kwargs
+    {'detrend_method': 'block', 'time_constant': 0}
+    >>> # re-write turbulent fluctuation settings without changing them
+    >>> ini.Advanced.Processing.set_turbulent_fluctuation(**tf_kwargs)  
+
+    Finally, since EddyproConfigEditor is a child of configparser.ConfigParser, we can directly
+    use ConfigParser methods on it. However, this is not recommended, since it can create changes
+    in the config file that may not be tracked by EddyproConfigEditor. For example:
+    >>> # instantiate from file
+    >>> ini = EddyProConfigEditor('./config.eddypro')
+    >>> # print ini file sections
+    >>> for s in ini.sections(): print(s)
+    FluxCorrection_SpectralAnalysis_General
+    Project
+    RawProcess_BiometMeasurements
+    RawProcess_General
+    RawProcess_ParameterSettings
+    RawProcess_Settings
+    RawProcess_Tests
+    RawProcess_TiltCorrection_Settings
+    RawProcess_TimelagOptimization_Settings
+    RawProcess_WindDirectionFilter
+    >>> # retrieve the entry "pr_start_date"
+    >>> ini.get(section='Project', option='pr_start_date')
+    '2020-06-21'
+    >>> # set a new start dat
+    >>> ini.set(section='Project', option='pr_start_date', value='2021-04-20')
+    >>> # check that it worked
+    >>> ini.get(section='Project', option='pr_start_date')
+    '2021-04-20'
+    >>> # see if the EddyproConfigEditor noticed the change: it didn't!
+    >>> ini._project_start_date
+    False
+    >>> # instead, use the method Basic.set_start_date
+    >>> ini.set_start_date('2021-04-21 00:00')
+    >>> ini.get_start_date()
+    datetime.datetime(2021, 4, 21, 0, 0)
+    >>> ini.get(section='Project', option='pr_start_date')
+    '2021-04-21'
+    >>> ini._project_start_date
+    True
+    '''
     def __init__(self, reference_ini: str | PathLike[str]):
         super().__init__(allow_no_value=True)
         self.read(reference_ini)
 
-        self._start_set = False
-        self._end_set = False
+        # for tracking changes to the ini file
+        self.history = dict()
+        self._num_changes = 0
 
         self.Basic = self._Basic(self)
         self.Advanced = self._Advanced(self)
@@ -201,7 +334,52 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ----------
         ini_file: the file name to write to
         out_path: the path for eddypro to output results to. If 'keep' (default), use the outpath already in the config file
+
+        Notes
+        -----
+        this method will check to make sure that the file has been set up in a valid manner.
+        Specifically, it will check to make sure that the project start and end times are valid.
+        If any other time-specific settings are being used, it will check those for validity too,
+        such as planar fit settings, time lag auto-optimization settings, spectra calculation settings.
         """
+
+        # check that the time window is valid
+        start, end = self.Basic.get_project_date_range().values()
+        if (start - end).days <= 0:
+            warnings.warn(f'WARNING: project date range invalid ({start.strptime(r"%Y-%m-%d %H:%M")} -> {end.strptime(r"%Y-%m-%d %H:%M")})')
+        # check that the planar fit window is valid if the user specified manual planar fit.
+        pf_start = datetime.datetime.strptime(
+            self.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
+            + self.get('RawProcess_TiltCorrection_Settings', 'pf_start_time'),
+            r'%Y-%m-%d%H:%M')
+        pf_end = datetime.datetime.strptime(
+            self.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
+            + self.get('RawProcess_TiltCorrection_Settings', 'pf_end_time'),
+            r'%Y-%m-%d%H:%M')
+        true_pf_start, true_pf_end = max(pf_start, start), min(pf_end, end)
+        pf_manual_enabled = (
+            bool(int(self.get('RawProcess_TiltCorrection_Settings', 'pf_mode')))  # pf mode 1 is manual config
+            and (int(self.get('RawProcess_Settings', 'rot_meth')) in [3, 4]))  # 3 and 4 are planar fits
+        if pf_manual_enabled and (true_pf_end - true_pf_start).days <= 7:
+            warnings.warn(f'WARNING: planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
+        # check that the time optimization window is valid if the user specified manual automatic time opt.
+        pf_start = datetime.datetime.strptime(
+            self.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
+            + self.get('RawProcess_TiltCorrection_Settings', 'pf_start_time'),
+            r'%Y-%m-%d%H:%M')
+        pf_end = datetime.datetime.strptime(
+            self.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
+            + self.get('RawProcess_TiltCorrection_Settings', 'pf_end_time'),
+            r'%Y-%m-%d%H:%M')
+        true_pf_start, true_pf_end = max(pf_start, start), min(pf_end, end)
+        pf_manual_enabled = (
+            bool(int(self.get('RawProcess_TiltCorrection_Settings', 'pf_mode')))  # pf mode 1 is manual config
+            and (int(self.get('RawProcess_Settings', 'rot_meth')) in [3, 4]))  # 3 and 4 are planar fits
+        if pf_manual_enabled and (true_pf_end - true_pf_start).days <= 7:
+            warnings.warn(f'WARNING: planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
+
+        
+
         self.set('Project', 'file_name', str(ini_file))
         if out_path != 'keep':
             self.set('Project', 'out_path', str(out_path))
@@ -221,17 +399,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
         """
         split this config file up into a set of .eddypro files, each handling a smaller time chunk that the main config.
         all .eddypro files will be identical except in their project IDs, file names, and start/end dates.
-
-        Note that some processing methods are not compatible "out-of-the-box" with paralle processing in this format,
-        specifically those methods which rely on aggregate data from longer time series. This includes:
-            * planar fit methods require at least 2 weeks worth of data, ideally more.
-            * automatic time-lag optimization
-            * most spectral assessments require at least one month of data, ideally more.
-        To solve this issue, you can do one of the following:
-            * set the minimum worker timspan to be at least one month
-            * provide sufficient and representative spectral assesment, binned cospectra, planar fit, and/or automatic time lag optimization files from a previous run by modifying the axis_rotations_for_tilt_correction settings, the timelag_compenstaions settings, the spectra_calculations settings, and/or the spectra_qaqc settings.
-            * use methods that do not require long time spans of data.
-
         
         Parameters
         ----------
@@ -241,6 +408,23 @@ class EddyproConfigEditor(configparser.ConfigParser):
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
         min_worker_timespan: the minimum amount of data each worker can process, in days. If None (default), then set no minimum. Recommended if using methods that require aggregate data (see above)
+
+        Notes
+        -----
+        This method will check to make sure that the file has been set up in a valid manner.
+        Specifically, it will check to make sure that the project start and end times are valid.
+        If any other time-specific settings are being used, it will check those for validity too,
+        such as planar fit settings, time lag auto-optimization settings, spectra calculation settings.
+        
+        Note that some processing methods are not compatible "out-of-the-box" with paralle processing in this format,
+        specifically those methods which rely on aggregate data from longer time series. This includes:
+            * planar fit methods (require at least 2 weeks worth of data, ideally more).
+            * automatic time-lag optimization
+            * most spectral assessments require at least one month of data, ideally more.
+        To solve this issue, you can do one of the following:
+            * set the minimum worker timspan to be at least one month
+            * provide sufficient and representative spectral assesment, binned cospectra, planar fit, and/or automatic time lag optimization files from a previous run by modifying the axis_rotations_for_tilt_correction settings, the timelag_compenstaions settings, the spectra_calculations settings, and/or the spectra_qaqc settings.
+            * use methods that do not require long time spans of data.
         """
 
         # get file duration
@@ -253,22 +437,16 @@ class EddyproConfigEditor(configparser.ConfigParser):
         if num_workers is None:
             num_workers = max(multiprocessing.cpu_count() - 1, 1)
 
-        # split up file processing dates
-        start = str(
-            datetime.datetime.strptime(
-                f"{self.get('Project', 'pr_start_date')} {self.get('Project', 'pr_start_time')}",
-                r'%Y-%m-%d %H:%M'))
-        end = str(
-            datetime.datetime.strptime(
-                f"{self.get('Project', 'pr_end_date')} {self.get('Project', 'pr_end_time')}",
-                r'%Y-%m-%d %H:%M'))
-
+        #### determine how to allocate jobs to each worker ####
+        start, end = self.Basic.get_project_date_range().values()
         n_files = len(date_range(start, end, freq=f'{file_duration}min'))
+        # compute number of jobs (I think)
         job_size = ceil(file_duration * n_files / num_workers)
-        job_size = f'{int(ceil(job_size/file_duration)*file_duration)}min'
-
+        # round job size up to nearest multiple of file_duration
+        job_size = f'{int(ceil(job_size/file_duration)*file_duration)}min'  
         if min_worker_timespan is not None:
             job_size = f'{int(min_worker_timespan)}d'
+        
         job_starts = date_range(
             start,
             end - Timedelta(job_size),
@@ -276,10 +454,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
         if len(job_starts) <= 1: warnings.warn(f"WARNING: job size too long. Submitting {len(job_starts)} jobs")
         # dates are inclusive, so subtract 30min for file duration
         job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
-        job_start_dates = job_starts.strftime(date_format=r'%Y-%m-%d')
-        job_start_times = job_starts.strftime(date_format=r'%H:%M')
-        job_end_dates = job_ends.strftime(date_format=r'%Y-%m-%d')
-        job_end_times = job_ends.strftime(date_format=r'%H:%M')
+        # job_start_dates = job_starts.strftime(date_format=r'%Y-%m-%d')
+        # job_start_times = job_starts.strftime(date_format=r'%H:%M')
+        # job_end_dates = job_ends.strftime(date_format=r'%Y-%m-%d')
+        # job_end_times = job_ends.strftime(date_format=r'%H:%M')
 
         # give each project a unique id and file name
         project_ids = [
@@ -291,24 +469,28 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         # save original settings
         old_file_name = self.get('Project', 'file_name')
-        old_out_path = self.get('Project', 'out_path')
-        pr_start_date = self.get('Project', 'pr_start_date')
-        pr_end_date = self.get('Project', 'pr_end_date')
-        pr_start_time = self.get('Project', 'pr_start_time')
-        pr_end_time = self.get('Project', 'pr_end_time')
-        project_id = self.get('Project', 'project_id')
+        old_out_path = self.Basic.get_out_path()
+        # pr_start_date = self.get('Project', 'pr_start_date')
+        # pr_end_date = self.get('Project', 'pr_end_date')
+        # pr_start_time = self.get('Project', 'pr_start_time')
+        # pr_end_time = self.get('Project', 'pr_end_time')
+        project_id = self.Basic.get_project_id()
 
         # write new files
         if not os.path.isdir(Path(ini_dir)):
             Path.mkdir(Path(ini_dir))
         for i, fn in enumerate(ini_fns):
-            self.set('Project', 'out_path', str(out_path))
+            # self.set('Project', 'out_path', str(out_path))
+            self.Basic.set_out_path(out_path)
             self.set('Project', 'file_name', str(fn))
-            self.set('Project', 'pr_start_date', str(job_start_dates[i]))
-            self.set('Project', 'pr_end_date', str(job_end_dates[i]))
-            self.set('Project', 'pr_start_time', str(job_start_times[i]))
-            self.set('Project', 'pr_end_time', str(job_end_times[i]))
-            self.set('Project', 'project_id', str(project_ids[i]))
+
+            # self.set('Project', 'pr_start_date', str(job_start_dates[i]))
+            self.Basic.set_project_date_range(job_starts[i], job_ends[i])
+            # self.set('Project', 'pr_end_date', str(job_end_dates[i]))
+            # self.set('Project', 'pr_start_time', str(job_start_times[i]))
+            # self.set('Project', 'pr_end_time', str(job_end_times[i]))
+            self.Basic.set_project_id(project_ids[i])
+            # self.set('Project', 'project_id', str(project_ids[i]))
 
             with open(fn, 'w') as configfile:
                 configfile.write(';EDDYPRO_PROCESSING\n')  # header line
@@ -316,12 +498,14 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         # revert to original
         self.set('Project', 'file_name', old_file_name)
-        self.set('Project', 'out_path', old_out_path)
-        self.set('Project', 'pr_start_date', pr_start_date)
-        self.set('Project', 'pr_end_date', pr_end_date)
-        self.set('Project', 'pr_start_time', pr_start_time)
-        self.set('Project', 'pr_end_time', pr_end_time)
-        self.set('Project', 'project_id', project_id)
+        self.Basic.set_out_path(old_out_path)
+        self.Basic.set_project_date_range(start, end)
+        # self.set('Project', 'pr_start_date', pr_start_date)
+        # self.set('Project', 'pr_end_date', pr_end_date)
+        # self.set('Project', 'pr_start_time', pr_start_time)
+        # self.set('Project', 'pr_end_time', pr_end_time)
+        self.Basic.set_project_id(project_id)
+        # self.set('Project', 'project_id', project_id)
 
         return
 
@@ -337,8 +521,136 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         return df
 
+    def check_dates(
+            self, 
+            interval: Sequence[str | datetime.datetime, str | datetime.datetime], 
+            reference: Sequence[str | datetime.datetime, str | datetime.datetime] | Literal['project'] = 'project',
+            min_overlap: float = 0) -> bool:
+        """
+        Checks all current settings to find any conflicts. 
+        Can be configured to either warn the users of conflicts, or to raise an error when conflicts are detected
+
+        Parameters
+        ----------
+        interval: input sequence to check validity for. 
+        sequence of length 2 containing datetime.datetime objects or strings of format YYYY-mm-dd HH:MM. 
+        reference: t: sequence to reference input sequence against.
+        sequence of length 2 containing datetime.datetime objects or strings of format YYYY-mm-dd HH:MM. 
+        Alternatively, pass the keyword 'project' to use the project start and end dates as a reference point.
+        tolerance: float specifying the minimum allowable overlap tolerance between interval and reference, in days. Default 0
+
+        Returns 
+        -------
+        True if overlap between interval and reference is greater than or equal to min_overlap number of days. False otherwise
+
+        Points of concern are:
+        * invalid project start and end dates (project date range is shorter than averaging window)
+        * invalid planar fit start and end dates (requires two weeks of overlap with project start and end dates)
+        * invalid time lag optimization start and end dates (requires one month of overlap with project start and end dates)
+        * invalid spectra calculation dates (requires one month of overlap)
+        """
+        if reference == 'project': reference = self.Basic.get_project_date_range()
+        overlap = compute_date_overlap(interval, reference)
+
+        return overlap.days >= min_overlap
+
+    def _add_to_history(self, pane, setting, getter, modify_only_if_first=False):
+        # tracks setting history.
+        # history structure:
+        # {pane:
+        #   {setting:
+        #       [n_changes, setting_kwargs]}}
+
+        # if the current setting hasn't been modified yet, 
+        # initialize the history
+        if pane not in self.history:
+            self.history[pane] = dict()
+        if setting not in self.history[pane]:
+            self.history[pane][setting] = list()
+
+        # modify_only_if_first will tell us to only add to the history
+        # if the current history is empty.
+        if modify_only_if_first:
+            if len(self.history[pane][setting]) == 0:
+                current_setting = getter()
+                self.history[pane][setting].append((0, current_setting))
+            return
+        current_setting = getter()
+        self._num_changes += 1
+        self.history[pane][setting].append((deepcopy(self._num_changes), current_setting))
+
+        return
+    def print_history(self, grouping: Literal['h', 'c'] = 'h', max_ops: float | int = 5e8):
+        """print the (tracked) change history of the config
+        Parameters
+        ----------
+        grouping: if 'hierarchical', then group outputs by Pane, then Setting, then change # (default). If 'chronological', then group outputs by change # only.
+        max_ops: the maximum number of operations to perform when searching the history before raising RunTimeError. With complex and long histories, search time can become extremely long when printing with chronological grouping. This should never
+        be a problem when printing in hierarchical grouping. The default setting of 5e8 operations equates to about a ~30 second timeout on my (Alex Fox) machine, and will be on the order of 10^5 total changes to the file, so it's unlikely that you'll ever need to modify this setting
+        unless you're doing something really wild. Set to float('+inf') to disable this setting."""
+
+        assert grouping in ['h', 'c'], 'grouping must be one of "h" or "c".'
+        ops = 0
+        if grouping == 'h':
+            for pane in self.history:
+                print(f'--{pane}------------------')
+                for setting in self.history[pane]:
+                    print(f'  {setting}')
+                    for entry in self.history[pane][setting]:
+                        i, history_item = entry
+                        print(f'    Change #{i}')
+                        for k, v in history_item.items():
+                            print(f'      {k}: {v}')
+                            ops += 1
+                            if ops >= max_ops:
+                                raise RuntimeError('Maximum operations reached, aborting')
+                    print()
+                print()
+        elif grouping == 'c':
+            # print base state before any changes occured
+            history_copy = deepcopy(self.history)
+            print('--Base State-----------')
+            for pane in history_copy:
+                for setting in history_copy[pane]:
+                    for entry_num, entry in enumerate(history_copy[pane][setting]):
+                        i, history_item = entry
+                        # if this entry represents a "base state," print it and remove it from the history
+                        ops += 1
+                        if ops >= max_ops:
+                            raise RuntimeError('Maximum operations reached, aborting')
+                            
+                        if i == 0:
+                            ops -= 1
+                            print(f'  {pane}/{setting}')
+                            for k, v in history_item.items():   
+                                ops += 1
+                                print(f'    {k}: {v}')
+                            _ = history_copy[pane][setting].pop(entry_num)
+            print()
+                            
+            # print subsequent changes
+            print('--Modifications--------')
+            max_i = self._num_changes
+            target_i = 1
+            while target_i <= max_i:
+                for pane in history_copy:
+                    for setting in history_copy[pane]:
+                        for entry_num, entry in enumerate(history_copy[pane][setting]):
+                            i, history_item = entry
+                            ops += 1
+                            if ops >= max_ops:
+                                raise RuntimeError('Maximum operations reached, aborting')
+                            if i == target_i:
+                                ops -= 1
+                                print(f'  {target_i} {pane}/{setting}')
+                                for k, v in history_item.items():   
+                                    ops += 1
+                                    print(f'    {k}: {v}')
+                                target_i += 1
+        print(ops)
+
     def copy(self) -> Self:
-        """copies this config through a temporary file"""
+        """copies this config through a temporary file. The resulting copy is independent of this instance"""
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False)
         try:
             tmp.write(';EDDYPRO_PROCESSING\n')  # header line
@@ -356,9 +668,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             tmp.close()
             os.remove(tmp.name)
             raise
-
-        new._start_set = self._start_set
-        new._end_set = self._end_set
+        
+        new.history = deepcopy(self.history)
 
         return new
 
@@ -370,87 +681,113 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def __init__(self, root):
             self.root = root
 
-        def set_start_date(
+        def set_out_path(self, d):
+            """set the eddypro output path to directory d"""
+
+            history_args = ('Basic', 'out_path', self.get_out_path)
+            self.root._add_to_history(*history_args, True)
+            self.root.set('Project', 'out_path', str(d))
+            self.root._add_to_history(*history_args)
+        def get_out_path(self) -> Path:
+            return Path(self.root.get('Project', 'out_path'))
+
+        def set_project_start_date(
             self,
-            start: str | datetime.datetime | None = None,
+            start: str | datetime.datetime,
         ) -> None:
             """format yyyy-mm-dd HH:MM for strings"""
+
+            assert or_isinstance(start, str, datetime.datetime)
             if isinstance(start, str):
-                assert len(
-                    start) == 16, 'if using a string, must pass timestamps in YYYY-mm-DD HH:MM format'
-                pr_start_date, pr_start_time = start.split(' ')
+                assert len(start.strip()) == 16, 'if using a string, must pass timestamps in YYYY-mm-DD HH:MM format'
+
+            if isinstance(start, str):
+                pr_start_date, pr_start_time = start.strip().split(' ')
             else:
                 pr_start_date = start.strftime(r'%Y-%m-%d')
                 pr_start_time = start.strftime(r'%H:%M')
 
-            if start is not None:
-
-                self.root.set('Project', 'pr_start_date', str(pr_start_date))
-                self.root.set('Project', 'pr_start_time', str(pr_start_time))
-
-            self.root._start_set = True
-
-        def get_start_date(self) -> datetime.datetime:
+            history_args = ('Basic', 'project_start_date', self.get_project_start_date)
+            self.root._add_to_history(*history_args, modify_only_if_first=True)
+            self.root.set('Project', 'pr_start_date', str(pr_start_date))
+            self.root.set('Project', 'pr_start_time', str(pr_start_time))
+            self.root._add_to_history(*history_args)
+        def get_project_start_date(self) -> datetime.datetime:
             """retrieve form the config file the project start date."""
+            out = dict()
             start_date = self.root.get('Project', 'pr_start_date')
             start_time = self.root.get('Project', 'pr_start_time')
-            return datetime.datetime.strptime(
-                f'{start_date} {start_time}', r'%Y-%m-%d %H:%M')
+            out['start'] = datetime.datetime.strptime(f'{start_date} {start_time}', r'%Y-%m-%d %H:%M')
+            
+            return out
 
-        def set_end_date(
+        def set_project_end_date(
             self,
-            end: str | datetime.datetime | None = None
+            end: str | datetime.datetime
         ) -> None:
             """format yyyy-mm-dd HH:MM for strings"""
+            
+            assert or_isinstance(end, str, datetime.datetime)
             if isinstance(end, str):
-                assert len(
-                    end) == 16, 'if using a string, must pass timestamps in YYYY-mm-DD HH:MM format'
-                pr_end_date, pr_end_time = end.split(' ')
+                assert len(end.strip()) == 16, 'if using a string, must pass timestamps in YYYY-mm-DD HH:MM format'
+
+            if isinstance(end, str):
+                pr_end_date, pr_end_time = end.strip().split(' ')
             else:
                 pr_end_date = end.strftime(r'%Y-%m-%d')
                 pr_end_time = end.strftime(r'%H:%M')
-            if end is not None:
-                self.root.set('Project', 'pr_end_date', str(pr_end_date))
-                self.root.set('Project', 'pr_end_time', str(pr_end_time))
 
-            self.root._end_set = True
-
-        def get_end_date(self) -> datetime.datetime:
+            history_args = ('Basic', 'project_end_date', self.get_project_end_date)
+            self.root._add_to_history(*history_args, modify_only_if_first=True)
+            self.root.set('Project', 'pr_end_date', str(pr_end_date))
+            self.root.set('Project', 'pr_end_time', str(pr_end_time))
+            self.root._add_to_history(*history_args)
+        def get_project_end_date(self) -> datetime.datetime:
             """retrieve form the config file the project end date."""
+            out = dict()
             end_date = self.root.get('Project', 'pr_end_date')
             end_time = self.root.get('Project', 'pr_end_time')
-            return datetime.datetime.strptime(
-                f'{end_date} {end_time}', r'%Y-%m-%d %H:%M')
+            out['end'] = datetime.datetime.strptime(f'{end_date} {end_time}', r'%Y-%m-%d %H:%M')
+            
+            return out
 
-        def set_date_range(
+        def set_project_date_range(
             self,
             start: str | datetime.datetime | None = None,
             end: str | datetime.datetime | None = None
         ):
             """format yyyy-mm-dd HH:MM for strings"""
-            self.set_start_date(start)
-            self.set_end_date(end)
-
-        def get_date_range(self) -> dict:
+            if end < start:
+                warnings.warn(f'WARNING: Selected processing period is invalid: {str(start)} -> {str(end)}')
+            self.set_project_start_date(start)
+            self.set_project_end_date(end)
+        def get_project_date_range(self) -> dict:
             """retrieve form the config file the project start and end dates. Output can be can be passed to set_date_range__ as kwargs"""
-            start = self.get_start_date()
-            end = self.get_end_date()
+            start = self.get_project_start_date()
+            end = self.get_project_end_date()
             return dict(start=start, end=end)
 
         def set_missing_samples_allowance(self, pct: int):
             # pct: value from 0 to 40%
             assert pct >= 0 and pct <= 40
-            self.root.set('RawProcess_Settings', 'max_lack', str(int(pct)))
 
+            history_args = ('Basic', 'missing_samples_allowance', self.get_missing_samples_allowance)
+            self.root._add_to_history(*history_args, True)
+            self.root.set('RawProcess_Settings', 'max_lack', str(int(pct)))
+            self.root._add_to_history(*history_args)
         def get_missing_samples_allowance(self) -> int:
             """retrieve form the config file the maximum allowed missing samples per averaging window in %."""
             return int(self.root.get('RawProcess_Settings', 'max_lack'))
 
         def set_flux_averaging_interval(self, minutes: int):
             """minutes: how long to set the averaging interval to. If 0, use the file as-is"""
-            assert minutes >= 0 and minutes <= 9999, 'Must have 0 <= minutes <= 9999'
-            self.root.set('RawProcess_Settings', 'avrg_len', str(int(minutes)))
 
+            assert minutes >= 0 and minutes <= 9999, 'Must have 0 <= minutes <= 9999'
+            
+            history_args = ('Basic', 'flux_averagin_interval', self.get_flux_averaging_interval)
+            self.root._add_to_history(*history_args, True)
+            self.root.set('RawProcess_Settings', 'avrg_len', str(int(minutes)))
+            self.root._add_to_history(*history_args)
         def get_flux_averaging_interval(self) -> int:
             """retrieve form the config file the flux averaging interval in minutes"""
             return self.root.get('RawProcess_Settings', 'avrg_len')
@@ -471,6 +808,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             assert method in [
                 'mag', 'geo'], "Method must be one of 'mag' (magnetic north) or 'geo' (geographic north)"
 
+            history_args = ('Basic', 'north_reference', self.get_north_reference)
+            self.root._add_to_history(*history_args, True)
             self.root.set('RawProcess_General', 'use_geo_north',
                           str(int(method == 'geo')))
             if method == 'geo':
@@ -489,7 +828,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'RawProcess_General',
                     'dec_date',
                     str(declination_date))
-
+                
+                self.root._add_to_history(*history_args)
         def get_north_reference(self) -> dict:
             """retrieve form the config file the north reference data. output can be passed to set_north_reference__ as kwargs."""
             use_geo_north = self.root.get(
@@ -515,8 +855,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         def set_project_id(self, project_id: str):
             assert ' ' not in project_id and '_' not in project_id, 'project id must not contain spaces or underscores.'
-            self.root.set('Project', 'project_id', str(project_id))
 
+            history_args = ('Basic', 'project_id', self.get_project_id)
+            self.root._add_to_history(*history_args, True)
+            self.root.set('Project', 'project_id', str(project_id))
+            self.root._add_to_history(*history_args, True)
         def get_project_id(self) -> str:
             """retrieve form the config file the project project ID"""
             return self.root.get('Project', 'project_id')
@@ -538,12 +881,14 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             def set_wind_speed_measurement_offsets(
                     self, u: float = 0, v: float = 0, w: float = 0):
-                assert max(
-                    u**2, v**2, w**2) <= 100, 'Windspeed measurement offsets cannot exceed ±10m/s'
+                assert max(u**2, v**2, w**2) <= 100, 'Windspeed measurement offsets cannot exceed ±10m/s'
+                
+                history_args = ('Advanced', 'wind_speed_measurement_offsets', self.get_wind_speed_measurement_offsets)
+                self.root._add_to_history(*history_args, modify_only_if_first=True)
                 self.root.set('RawProcess_Settings', 'u_offset', str(u))
                 self.root.set('RawProcess_Settings', 'v_offset', str(v))
                 self.root.set('RawProcess_Settings', 'w_offset', str(w))
-
+                self.root._add_to_history(*history_args)
             def get_wind_speed_measurement_offsets(self) -> dict:
                 """retrieve form the config file the wind speed measurement offsets in m/s. Can be passed to set_windspeedmeasurementoffsets as kwargs"""
                 return dict(
@@ -555,69 +900,90 @@ class EddyproConfigEditor(configparser.ConfigParser):
             def _configure_planar_fit_settings(
                 self,
                 w_max: float,
-                u_min: float = 0,
-                start: str | datetime.datetime | None = None,
-                end: str | datetime.datetime | None = None,
-                num_per_sector_min: int = 0,
+                u_min: float,
+                num_per_sector_min: int,
+                start: str | datetime.datetime | Literal['project'] = 'project',
+                end: str | datetime.datetime | Literal['project'] = 'project',
                 fix_method: Literal['CW', 'CCW', 'double_rotations'] | int = 'CW',
                 north_offset: int = 0,
-                sectors: Sequence[Sequence[bool | int, float]] | None = None,
+                sectors: Sequence[Sequence[bool | int, float]] = [(False, 360)],
             ) -> dict:
                 """outputs a dictionary of planarfit settings
+
+                Parameters
+                ----------
                 w_max: the maximum mean vertical wind component for a time interval to be included in the planar fit estimation
                 u_min: the minimum mean horizontal wind component for a time interval to be included in the planar fit estimation
-                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format. If None (default), set to the date range of the processing file.
-                num_per_sector_min: the minimum number of valid datapoints for a sector to be computed. Default 0.
+                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date
+                num_per_sector_min: the minimum number of valid datapoints for a sector to be computed.
                 fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
                 north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
-                sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. If None (default), provide no sector information.
+                sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. defaults to a single active sector of 360 degrees, [(False, 360)]
+                
+                limits on inputs:
+                * w_max: 0.5-10
+                * u_min: 0.001 - 10
+                * num_per_sector_min: 1-10_000
+                north_offset: -180 - +180
+                sectors: 1-12 sectors, sectors must total 360 degrees, each sector between 0.1 and 360 degrees
 
-                Returns: a dictionary to provide to set_axis_rotations_for_tiltCorrection
+                Returns
+                -------
+                a dictionary to provide to set_axis_rotations_for_tiltCorrection
                 """
 
-                # start/end date/time
-                if start is not None:
-                    if isinstance(start, str):
-                        assert len(
-                            start) == 16, 'datetime strings must be in yyyy-mm-dd HH:MM format'
-                        pf_start_date, pf_start_time = start.split(' ')
-                    else:
-                        pf_start_date = start.strftime(r'%Y-%m-%d')
-                        pf_start_time = start.strftime(r'%H:%M')
-                else:
-                    pf_start_date = self.root.get('Project', 'pr_start_date')
-                    pf_start_time = self.root.get('Project', 'pr_start_time')
-                    if not self.root._start_set:
-                        warnings.warn(
-                            f"Warning: Using the start date and time provided by the original reference file: {pf_start_date} {pf_start_time}")
-                if end is not None:
-                    if isinstance(end, str):
-                        assert len(
-                            end) == 16, 'datetime strings must be in yyyy-mm-dd HH:MM format'
-                        pf_end_date, pf_end_time = end.split(' ')
-                    else:
-                        pf_end_date = end.strftime(r'%Y-%m-%d')
-                        pf_end_time = end.strftime(r'%H:%M')
-                else:
-                    pf_end_date = self.root.get('Project', 'pr_end_date')
-                    pf_end_time = self.root.get('Project', 'pr_end_time')
-                    if not self.root._start_set:
-                        warnings.warn(
-                            f"Warning: Using the end date and time provided by the original reference file: {pf_end_date} {pf_end_time}")
+                # check that inputs conform to requirements
+                assert in_range(w_max, '[0.5, 10.0]'), 'w_max must be between 0.5 and 10.0'
+                assert in_range(u_min, '[0.001, 10.0]'), 'u_min must be between 0.001 and 10.0'
+                assert fix_method in ['CW', 'CCW', 'double_rotations', 0, 1, 2], 'fix_method must be one of CW (0), CCW (1), double_rotations (2)'
+                assert in_range(num_per_sector_min, '[1, 10_000]'), 'num_per_sector_min must be between 1 and 10_000'
+                assert in_range(north_offset, '[-180, 180]'), 'north_offset must be between -180 and +180'
+                assert isinstance(sectors, Sequence), f'sectors must be a sequence. Received {type(sectors)} instead'
+                assert or_isinstance(start, int, datetime.datetime), 'starting timestamp must be string or datetime.datetime'
+                assert or_isinstance(end, int, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
+                if isinstance(start, str):
+                    assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                if isinstance(end, str):
+                    assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                assert len(sectors) <= 12, f'was given {len(sectors)} sectors. No more than 12 are permitted'
+                total_width = 0
+                for i, s in enumerate(sectors):
+                    assert isinstance(s, Sequence), f'Each sector must be a seqeuence. Received {type(s)} for sector {i}'
+                    assert len(s) == 2, f'Each sector must be of the form (exclude, width). Received {type(s)} of length {len(s)} for sector {i}'
+                    assert or_isinstance(s[0], bool, int), f'The first entry in each sector must be a bool or an int. Received {type(s[0])} for sector {i}'
+                    assert or_isinstance(s[1], bool, float, int), f'The second entry in each sector must be a float or an int. Received {type(s[1])} for sector {i}'
+                    assert s[1] >= 0.1, f'Each sector must be greater or equal to 0.1° wide. Received width={s[1]}° for sector {i}'
+                    total_width += s[1]
+                assert total_width == 360., f'Sectors must cover exactly 360 degrees in aggregate. Given sectors only total {total_width}°'
 
-                # simple settings
-                assert u_min >= 0 and u_min <= 10, 'must have 0 <= u_min <= 10'
-                assert w_max > 0 and w_max <= 10, 'must have 0 < w_max <= 10'
-                assert isinstance(
-                    num_per_sector_min, int) and num_per_sector_min >= 0 and num_per_sector_min <= 9999, 'must have 0 <= num_sectors_min <= 9999'
-                assert fix_method in ['CW', 'CCW', 'double_rotations', 0, 1,
-                                      2], 'fix method must be one of CW, CCW, double_rotations, 0, 1, 2'
+                # process dates
+                if start == 'project':
+                    pf_start = self.root.Basic.get_start_date()
+                    pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                elif isinstance(start, datetime.datetime):
+                    pf_start = start
+                    pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                else:
+                    pf_start = start
+                    pf_start_date, pf_start_time = pf_start.split(' ')
+                if end == 'project':
+                    pf_end = self.root.Basic.get_end_date()
+                    pf_end_date, pf_end_time = pf_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                elif isinstance(end, datetime.datetime):
+                    pf_end = end
+                    pf_end_date, pf_end_time = pf_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                else:
+                    pf_end = end
+                    pf_end_date, pf_end_time = pf_end.split(' ')
+                # check that the date range is valid for this project
+                overlap = self.root.check_dates(interval=(pf_start, pf_end), reference='project', min_overlap=14).days
+                if overlap < 14:
+                    warnings.warn(f'WARNING: insufficient overlap ({overlap.days} days) between planar fit time window ({pf_start} -> {pf_end}) and project time window ({self.root.Basic.get_start_date()} -> {self.root.Basic.get_end_date()}). At least 14 days are required')
+                
+                # fix method
                 fix_dict = dict(CW=0, CCW=1, double_rotations=2)
                 if isinstance(fix_method, str):
                     fix_method = fix_dict[fix_method]
-
-                assert north_offset >= - \
-                    179.9 and north_offset <= 180, 'must have -179.9 <= north_offset <= 180'
 
                 settings_dict = dict(
                     pf_start_date=pf_start_date,
@@ -627,37 +993,50 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     pf_u_min=u_min,
                     pf_w_max=w_max,
                     pf_min_num_per_sec=int(num_per_sector_min),
-                    pf_fix=int(fix_method),
+                    pf_fix=fix_method,
                     pf_north_offset=north_offset,
                 )
 
                 # sectors
                 if sectors is not None:
-                    assert len(
-                        sectors) <= 10, "Can't have more than 10 sectors"
-                    total_width = 0
-                    for _, width in sectors:
-                        total_width += width
-                    assert total_width <= 360, 'Sector widths cannot add up to more than 360.'
                     for i, sector in enumerate(sectors):
                         exclude, width = sector
                         n = i + 1
                         settings_dict[f'pf_sector_{n}_exclude'] = int(exclude)
                         settings_dict[f'pf_sector_{n}_width'] = str(width)
-
+                                                                    
                 return settings_dict
-
             def set_axis_rotations_for_tilt_correction(
                 self,
-                method: Literal['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb'] | int,
+                method: Literal['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb'] | int = 'double_rotations',
                 pf_file: str | PathLike[str] | None = None,
                 configure_planar_fit_settings_kwargs: dict | None = None,
             ):
                 """
-                method: one of 0 or "none" (no tilt correction), 1 or "double_rotations" (double rotations), 2 or "triple_rotations" (triple rotations), 3 or "planar_fit" (planar fit, Wilczak 2001), 4 or "planar_fit_nvb" (planar with with no velocity bias (van Dijk 2004)). one of pf_file or pf_settings_kwargs must be provided if method is a planar fit type.
-                pf_file: Mututally exclusive with pf_settings_kwargs. If method is a planar fit type, path to an eddypro-compatible planar fit file. This can be build by hand, or taken from the output of a previous eddypro run. Typically labelled as "eddypro_<project id>_planar_fit_<timestamp>_adv.txt"
-                pf_settings_kwargs: Mututally exclusive with pf_file. Arguments to be passed to configure_planar_fit_settings.
+                Parameters
+                ----------
+                method: one of 0 or "none" (no tilt correction), 1 or "double_rotations" (default), 2 or "triple_rotations", 3 or "planar_fit" (Wilczak 2001), 4 or "planar_fit_nvb" (planar with with no velocity bias (van Dijk 2004)). If a planar fit-type method is selected, then exactly one of pf_file or pf_settings_kwargs must be provided if method is a planar fit type. 
+                pf_file: path to an eddypro-compatible planar fit file. If provided, planar_fit_settings_kwargs must be None. Ignored if a non-planar-fit setting is provided.
+                pf_settings_kwargs: Arguments to be passed to configure_planar_fit_settings. If provided, pf_file must be None. Ignored if a non-planar-fit setting is provided.
+
+                    kwargs for configure_planar_fit_settings (see `EddyproConfigEditor.Advanced.Processing._configure_planar_fit_settings` documentation for details)
+                    
+                    w_max: the maximum mean vertical wind component for a time interval to be included in the planar fit estimation
+                    u_min: the minimum mean horizontal wind component for a time interval to be included in the planar fit estimation
+                    start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date
+                    num_per_sector_min: the minimum number of valid datapoints for a sector to be computed.
+                    fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
+                    north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
+                    sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. defaults to a single active sector of 360 degrees, [(False, 360)]
                 """
+                history_args = ('Advanced', 'axis_rotations_for_tilt_correction', self.get_axis_rotations_for_tilt_correction)
+                self.root._add_to_history(history_args, True)
+
+                assert method in ['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb', 0, 1, 2, 3, 4], 'method must be one of none (0), double_rotations (1), triple_rotations (2), planar_fit (3), or planar_fit_nvb (4)'
+                if method in ['planar_fit', 'planar_fit_nvb', 3, 4]:
+                    assert bool(pf_file) != bool(configure_planar_fit_settings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
+                elif pf_file is not None or configure_planar_fit_settings_kwargs is not None:
+                    warnings.warn(f'WARNING: planar fit settings arguments will be ignored when method is not a non-planar-fit type. Received method={method}')
                 method_dict = {
                     'none': 0,
                     'double_rotations': 1,
@@ -665,18 +1044,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'planar_fit': 3,
                     'planar_fit_nvb': 4}
                 if isinstance(method, str):
-                    assert method in ['none', 'double_rotations', 'triple_rotations', 'planar_fit',
-                                      'planar_fit_nvb'], 'method must be one of None, double_rotations, triple_rotations, planar_fit, planar_fit_nvb, or 0, 1, 2, 3, or 4.'
                     method = method_dict[method]
-                assert method in range(
-                    5), 'method must be one of None, double_rotations, triple_rotations, planar_fit, planar_fit_nvb, or 0, 1, 2, 3, or 4.'
-
+                
                 self.root.set('RawProcess_Settings', 'rot_meth', str(method))
 
                 # planar fit
                 if method in [3, 4]:
-                    assert bool(pf_file) != bool(
-                        configure_planar_fit_settings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
                     if pf_file is not None:
                         self.root.set(
                             'RawProcess_TiltCorrection_Settings',
@@ -698,7 +1071,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         for option, value in pf_settings.items():
                             self.root.set(
                                 'RawProcess_TiltCorrection_Settings', option, str(value))
-
+                
+                self.root._add_to_history(history_args)
             def get_axis_rotations_for_tilt_correction(self) -> dict:
                 """
                 extracts axis rotation settings from the config file.
@@ -789,35 +1163,64 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     configure_planar_fit_settings_kwargs=configure_planar_fit_settings_kwargs)
 
             def set_turbulent_fluctuations(self,
-                                           method: Literal['block',
+                                           detrend_method: Literal['block',
                                                            'detrend',
                                                            'running_mean',
-                                                           'exponential_running_mean'] | int = 0,
-                                           time_const: float | None = None):
-                '''time constant in seconds not required for block averaging (0) (default)'''
+                                                           'exponential_running_mean'] | int = 'block',
+                                           time_constant: float | None = None):
+                '''
+                Parameters
+                ----------
+                detrend_method: one of 'block' (0), 'detrend (1), running_mean (2), or exponential_running_mean (3). Default 'block'
+                time_constant: if detrend, running_mean, or exponential_running_mean are selected, provide a time constant in minutes. Default None. If None and linear_detrend is selected, set time_constant to 0 to indicate to eddypro to use the flux averaging interval as the time constant. If a running mean method is selected and time_constant is None, set time_constant to 250s.
+                    detrend_method              default time_constant
+                    block                       0 (does nothing)
+                    detrend                     0 (flux averaging interval)
+                    running_mean                250 (seconds)
+                    exponential_running_mean    250 (seconds)
+
+                limits:
+                time_constant must be between 0 and 5000 minutes
+                '''
+                history_args = ('Advanced', 'turbulent_fluctuations', self.get_turbulent_fluctuations)
+                self.root._add_to_history(*history_args, True)
+
+                assert detrend_method in ['block', 'detrend', 'running_mean', 'exponential_running_mean', 0, 1, 2, 3], "detrend_method must be one of 'block' (0), 'detrend (1), running_mean (2), or exponential_running_mean (3)"
+                assert or_isinstance(time_constant, int, float) or time_constant == 'averaging_interval', 'time constant must be numeric'
+                assert in_range(time_constant, '[0, 5000.]'), 'time constant must be between 0 and 5000'
+
+                # choose method
                 method_dict = {
                     'block': 0,
                     'detrend': 1,
                     'running_mean': 2,
                     'exponential_running_mean': 3}
-                if isinstance(method, str):
-                    assert method in method_dict, 'method must be one of block, detrend, running_mean, exponential_running_mean'
-                    method = method_dict[method]
-                if time_const is None:
+                if isinstance(detrend_method, str):
+                    detrend_method = method_dict[detrend_method]
+                
+                # choose time constant
+                default_time_constants = [0, 0, 250/60, 250/60]
+                if time_constant is None:
                     # default for linear detrend is flux averaging interval
-                    if method == 1:
-                        time_const = 0.
-                    # default for linear detrend is 250s
-                    elif method in [2, 3]:
-                        time_const = 250.
+                    time_constant = default_time_constants[detrend_method]
                 self.root.set(
                     'RawProcess_Settings',
                     'detrend_meth',
-                    str(method))
+                    str(detrend_method))
                 self.root.set(
                     'RawProcess_Settings',
                     'timeconst',
-                    str(time_const))
+                    time_constant*60)
+
+                self.root._add_to_history(*history_args)
+            def get_turbulent_fluctuations(self) -> dict:
+                out = dict()
+
+                methods = ['block', 'detrend', 'running_mean', 'exponential_running_mean']
+                out['detrend_method'] = methods[int(self.root.get('RawProcess_Settings', 'detrend_meth'))]
+                out['time_constant'] = float(self.root.get('RawProcess_Settings', 'timeconst'))
+
+                return out
 
             def _configure_timelag_auto_opt(
                 self,
@@ -861,9 +1264,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         to_start_date = start.strftime(r'%Y-%m-%d')
                         to_start_time = start.strftime(r'%H:%M')
                 else:
-                    to_start_date = self.root.get('Project', 'pr_start_date')
-                    to_start_time = self.root.get('Project', 'pr_start_time')
-                    if not self.root._start_set:
+                    to_start_date, to_start_time = (
+                        self.root.Basic.get_start_date()
+                        .strftime(r'%Y-%m-%d %H:%M')
+                        .split(' '))
+                    if not self.root._project_start_date:
                         warnings.warn(
                             f"Warning: Using the start date and time provided by the original reference file: {to_start_date} {to_start_time}")
                 if end is not None:
@@ -875,11 +1280,22 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         to_end_date = end.strftime(r'%Y-%m-%d')
                         to_end_time = end.strftime(r'%H:%M')
                 else:
-                    to_end_date = self.root.get('Project', 'pr_end_date')
-                    to_end_time = self.root.get('Project', 'pr_end_time')
-                    if not self.root._start_set:
+                    to_end_date, to_end_time = (
+                        self.root.Basic.get_end_date()
+                        .strftime(r'%Y-%m-%d %H:%M')
+                        .split(' '))
+                    if not self.root._project_start_date:
                         warnings.warn(
                             f"Warning: Using the end date and time provided by the original reference file: {to_end_date} {to_end_time}")
+                # check that time window is valid
+                start = datetime.datetime.strptime(to_start_date + ' ' + to_start_time, r'%Y-%m-%d %H:%M')
+                end = datetime.datetime.strptime(to_end_date + ' ' + to_end_time, r'%Y-%m-%d %H:%M')
+                if (end - start).days <= 7:
+                    warnings.warn(f'WARNING: time lag auto-optimization window ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}) is shorter than 7 days!')
+                project_start, project_end = self.root.Basic.get_date_range().values()
+                true_start, true_end = max(start, project_start), min(end, project_end)
+                if (true_end - true_start).days <= 7:
+                    warnings.warn(f'WARNING: time lag auto-optimization window ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({project_end.strftime(r"%Y-%m-%d %H:%M")} -> {project_end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
 
                 # lag settings default to "automatic detection" for the value
                 # -1000.1
@@ -2121,7 +2537,18 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.root = outer.root
                 self.outer = outer
 
-
 if __name__ == '__main__':
+    from copy import copy
+
     ref = EddyproConfigEditor(
         '/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
+    ref.Basic.set_project_date_range('2021-01-01 00:00', '2023-10-13 14:54')
+    for _ in range(100):
+        ref.Advanced.Processing.set_wind_speed_measurement_offsets(5, 10, 5)
+        ref.Basic.set_project_date_range('2021-01-01 00:00', '2023-10-13 14:54')
+    t0 = timer()
+    ref.print_history(grouping='c')
+    t1 = timer()
+    print(t1 - t0)
+
+    # print(ref.history['Advanced']['wind_speed_measurement_offsets'])
