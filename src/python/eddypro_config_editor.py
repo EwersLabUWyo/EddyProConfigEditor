@@ -885,7 +885,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     self, u: float = 0, v: float = 0, w: float = 0):
                 assert max(u**2, v**2, w**2) <= 100, 'Windspeed measurement offsets cannot exceed ±10m/s'
                 
-                history_args = ('Advanced', 'wind_speed_measurement_offsets', self.get_wind_speed_measurement_offsets)
+                history_args = ('Advanced-Processing', 'wind_speed_measurement_offsets', self.get_wind_speed_measurement_offsets)
                 self.root._add_to_history(*history_args, modify_only_if_first=True)
                 self.root.set('RawProcess_Settings', 'u_offset', str(u))
                 self.root.set('RawProcess_Settings', 'v_offset', str(v))
@@ -963,6 +963,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert total_width == 360., f'Sectors must cover exactly 360 degrees in aggregate. Given sectors only total {total_width}°'
 
                 # process dates
+                # if user specifies "project," we choose start and end dates, but they don't end up mattering because we set pf_subset = 0
                 pf_subset = 1
                 if start == 'project':
                     pf_start = self.root.Basic.get_start_date()
@@ -1038,7 +1039,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
                     sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. defaults to a single active sector of 360 degrees, [(False, 360)]
                 """
-                history_args = ('Advanced', 'axis_rotations_for_tilt_correction', self.get_axis_rotations_for_tilt_correction)
+                history_args = ('Advanced-Processing', 'axis_rotations_for_tilt_correction', self.get_axis_rotations_for_tilt_correction)
                 self.root._add_to_history(history_args, True)
 
                 assert method in ['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb', 0, 1, 2, 3, 4], 'method must be one of none (0), double_rotations (1), triple_rotations (2), planar_fit (3), or planar_fit_nvb (4)'
@@ -1098,29 +1099,33 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 # if we have planar fit, then returna  dict for pf_config that
                 # can be passed to _configure_planar_fit_settings
+                # note that if pf_subset == 1, we don't grab the dates
                 if method in ['planar_fit', 'planar_fit_nvb']:
                     configure_planar_fit_settings_kwargs = dict()
                     # case that a manual configuration is provided
-                    start_date = self.root.get(
-                        'RawProcess_TiltCorrection_Settings', 'pf_start_date')
-                    start_time = self.root.get(
-                        'RawProcess_TiltCorrection_Settings', 'pf_start_time')
-                    if not start_date:
-                        start_date = self.root.get('Project', 'pr_start_date')
-                    if not start_time:
-                        start_time = self.root.get('Project', 'pr_start_time')
-                    configure_planar_fit_settings_kwargs['start'] = start_date + \
-                        ' ' + start_time
-                    end_date = self.root.get(
-                        'RawProcess_TiltCorrection_Settings', 'pf_end_date')
-                    end_time = self.root.get(
-                        'RawProcess_TiltCorrection_Settings', 'pf_end_time')
-                    if not end_date:
-                        end_date = self.root.get('Project', 'pr_end_date')
-                    if not end_time:
-                        end_time = self.root.get('Project', 'pr_end_time')
-                    configure_planar_fit_settings_kwargs['end'] = end_date + \
-                        ' ' + end_time
+                    pf_subset = int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_subset'))
+                    configure_planar_fit_settings_kwargs['pf_subset'] = pf_subset
+                    if pf_subset:
+                        start_date = self.root.get(
+                            'RawProcess_TiltCorrection_Settings', 'pf_start_date')
+                        start_time = self.root.get(
+                            'RawProcess_TiltCorrection_Settings', 'pf_start_time')
+                        if not start_date:
+                            start_date = self.root.get('Project', 'pr_start_date')
+                        if not start_time:
+                            start_time = self.root.get('Project', 'pr_start_time')
+                        configure_planar_fit_settings_kwargs['start'] = start_date + \
+                            ' ' + start_time
+                        end_date = self.root.get(
+                            'RawProcess_TiltCorrection_Settings', 'pf_end_date')
+                        end_time = self.root.get(
+                            'RawProcess_TiltCorrection_Settings', 'pf_end_time')
+                        if not end_date:
+                            end_date = self.root.get('Project', 'pr_end_date')
+                        if not end_time:
+                            end_time = self.root.get('Project', 'pr_end_time')
+                        configure_planar_fit_settings_kwargs['end'] = end_date + \
+                            ' ' + end_time
 
                     configure_planar_fit_settings_kwargs['u_min'] = float(
                         self.root.get('RawProcess_TiltCorrection_Settings', 'pf_u_min'))
@@ -1187,7 +1192,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 limits:
                 time_constant must be between 0 and 5000 minutes
                 '''
-                history_args = ('Advanced', 'turbulent_fluctuations', self.get_turbulent_fluctuations)
+                history_args = ('Advanced-Processing', 'turbulent_fluctuations', self.get_turbulent_fluctuations)
                 self.root._add_to_history(*history_args, True)
 
                 assert detrend_method in ['block', 'detrend', 'running_mean', 'exponential_running_mean', 0, 1, 2, 3], "detrend_method must be one of 'block' (0), 'detrend (1), running_mean (2), or exponential_running_mean (3)"
@@ -1364,7 +1369,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 autoopt_file: Mututally exclusive with autoopt_settings_kwargs. If method is a planar fit type, path to an eddypro-compatible automatic time lag optimization file. This can be build by hand, or taken from the output of a previous eddypro run. Typically labelled as "eddypro_<project id>_timelag_opt_<timestamp>_adv.txt" or similar
                 autoopt_settings_kwargs: Mututally exclusive with autoopt_file. Arguments to be passed to configure_TimelagAutoOpt.
                 """
-                history_args = ('Advanced', 'timelag_compensations', self.get_timelag_compensations)
+                history_args = ('Advanced-Processing', 'timelag_compensations', self.get_timelag_compensations)
                 self.root._add_to_history(*history_args, True)
 
                 # check inputs
@@ -1383,8 +1388,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'covariance_maximization_with_default': 2,
                     'covariance_maximization': 3,
                     'automatic_optimization': 4}
-                
-                
 
                 self.root.set('RawProcess_Settings', 'tlag_meth', str(method))
 
@@ -1427,28 +1430,30 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 if method == 'automatic_optimization':
                     configure_TimelagAutoOpt_kwargs = dict()
-
-                    # dates for autoopt fitting
-                    start_date = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_start_date')
-                    start_time = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_start_time')
-                    if not start_date:
-                        start_date = self.root.get('Project', 'pr_start_date')
-                    if not start_time:
-                        start_time = self.root.get('Project', 'pr_start_time')
-                    configure_TimelagAutoOpt_kwargs['start'] = start_date + \
-                        ' ' + start_time
-                    end_date = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_end_date')
-                    end_time = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_end_time')
-                    if not end_date:
-                        end_date = self.root.get('Project', 'pr_end_date')
-                    if not end_time:
-                        end_time = self.root.get('Project', 'pr_end_time')
-                    configure_TimelagAutoOpt_kwargs['end'] = end_date + \
-                        ' ' + end_time
+                    to_subset = int(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_subset'))
+                    configure_TimelagAutoOpt_kwargs['to_subset'] = to_subset
+                    if to_subset:
+                        # dates for autoopt fitting
+                        start_date = self.root.get(
+                            'RawProcess_TimelagOptimization_Settings', 'to_start_date')
+                        start_time = self.root.get(
+                            'RawProcess_TimelagOptimization_Settings', 'to_start_time')
+                        if not start_date:
+                            start_date = self.root.get('Project', 'pr_start_date')
+                        if not start_time:
+                            start_time = self.root.get('Project', 'pr_start_time')
+                        configure_TimelagAutoOpt_kwargs['start'] = start_date + \
+                            ' ' + start_time
+                        end_date = self.root.get(
+                            'RawProcess_TimelagOptimization_Settings', 'to_end_date')
+                        end_time = self.root.get(
+                            'RawProcess_TimelagOptimization_Settings', 'to_end_time')
+                        if not end_date:
+                            end_date = self.root.get('Project', 'pr_end_date')
+                        if not end_time:
+                            end_time = self.root.get('Project', 'pr_end_time')
+                        configure_TimelagAutoOpt_kwargs['end'] = end_date + \
+                            ' ' + end_time
 
                     configure_TimelagAutoOpt_kwargs['ch4_min_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_ch4_min_lag')
@@ -1540,7 +1545,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     If None (selected by default), then do not change regression coefficients in the file
                 set_all: as an alternative to specifying day/night_bot/top/spar, you can provide all = 'revert' to revert all burba correction settings to their eddypro defaults. Default None (do nothing).
                 """
-
+                history_args = ('Advanced-Processing', 'compensation_of_density_fluctuations', self.get_compensation_of_density_fluctuations)
+                self.root._add_to_history(*history_args, True)
                 if not enable:
                     self.root.set('Project', 'wpl_meth', '0')
                     if burba_correction:
@@ -1677,7 +1683,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     else:
                         self._set_burba_coeffs(
                             'night_spar', 'multiple', night_spar)
-
+                self.root._add_to_history(*history_args)
             def get_compensation_of_density_fluctuations(self) -> dict:
 
                 out = dict()
@@ -1702,23 +1708,14 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             for k in kwargs:
                                 out[k] = tuple(
                                     float(
-                                        self.root.get(
-                                            'RawProcess_Settings',
-                                            f'm_{k}_{i}')) for i in range(
-                                        1,
-                                        5))
+                                        self.root.get('RawProcess_Settings', f'm_{k}_{i}')) for i in range(1, 5))
                         else:
                             for k in kwargs:
                                 out[k] = tuple(
                                     float(
-                                        self.root.get(
-                                            'RawProcess_Settings',
-                                            f'l_{k}_{i}')) for i in [
-                                        'gain',
-                                        'offset'])
+                                        self.root.get('RawProcess_Settings',f'l_{k}_{i}')) for i in ['gain', 'offset'])
 
                 return out
-
          # --------Statistical Analysis---------
 
         class _Statistical:
@@ -1753,6 +1750,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 consecutive outliers: 3-1000
                 z-scores: 1-20
                 """
+                history_args = ('Advanced-Statistical', 'spike_count_removal', self.get_spike_count_removal)
+                self.root._add_to_history(*history_args, True)
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 assert method in [
@@ -1810,10 +1809,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'RawProcess_ParameterSettings',
                         f'sr_lim_{name}',
                         str(v))
-
+                
+                self.root._add_to_history(*history_args)
                 return
-
-            def get_spike_count_remova(self) -> dict:
+            def get_spike_count_removal(self) -> dict:
                 out_dict = dict()
                 out_dict['enable'] = bool(
                     int(self.root.get('RawProcess_Tests', 'test_sr')))
@@ -1859,6 +1858,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 bins: 50-150
                 max_empty_bins: 1-100%
                 """
+                history_args = ('Advanced-Statistical', 'amplitude_resolution', self.get_amplitude_resolution)
+                self.root._add_to_history(*history_args, True)
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 assert or_isinstance(variation_range, int, float) and in_range(
@@ -1887,9 +1888,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'RawProcess_ParameterSettings',
                     'ar_hf_lim',
                     str(max_empty_bins))
-
+                
+                self.root._add_to_history(*history_args)
                 return
-
             def get_amplitude_resolution(self) -> dict:
                 out = dict()
                 out['enable'] = bool(
@@ -1926,6 +1927,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 extreme_percentile: 1-100
                 accepted_central/extreme_droupouts: 1-100%
                 """
+                history_args = ('Advanced-Statistical', 'dropouts', self.get_dropouts)
+                self.root._add_to_history(*history_args, True)
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 assert isinstance(extreme_percentile, int) and in_range(
@@ -1955,7 +1958,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     str(accepted_extreme_dropouts))
 
                 return
-
             def get_dropouts(self):
                 # enable
                 out = dict()
@@ -2004,6 +2006,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 co2: 100 - 10000
                 h2o, ch4, gas4: 0 - 1000
                 """
+                history_args = ('Advanced-Statistical', 'absolute_limits', self.get_absolute_limits)
+                self.root._add_to_history(*history_args, True)
+
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 assert or_isinstance(
@@ -2071,8 +2076,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'RawProcess_ParameterSettings', 'filter_al', '1')
                     return
                 self.root.set('RawProcess_ParameterSettings', 'filter_al', '0')
-                return
 
+                self.root._add_to_history(*history_args)
+                return
             def get_absolute_limits(self):
                 out = dict()
                 out['enable'] = bool(
@@ -2130,6 +2136,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 kurt lower in [0.1, 3]
                 kurt upper in [3, 10]
                 """
+                
+                arg4 = True  # this is just done to make copying and pasting easier
+                history_args = ('Advanced-Statistical', 'skewness_and_kurtosis', self.get_skewness_and_kurtosis)
+                self.root._add_to_history(*history_args, arg4)
+                arg4 = False
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 for v, name, bounds in zip(
@@ -2169,8 +2180,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'RawProcess_ParameterSettings',
                         f'sk_hf_{name}',
                         str(hard))
+                    
+                history_args = ('Advanced-Statistical', 'skewness_and_kurtosis', self.get_skewness_and_kurtosis)
+                self.root._add_to_history(*history_args, arg4)
                 return
-
             def get_skewness_and_kurtosis(self):
                 out = dict()
                 out['enable'] = bool(
@@ -2213,6 +2226,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 must have hard >= soft, and all values must be within the interval [0, 50]
                 """
+                history_args = ('Advanced-Statistical', 'discontinuities', self.get_discontinuities)
+                self.root._add_to_history(*history_args, True)
+
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 for v, name in zip(
@@ -2250,8 +2266,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'RawProcess_ParameterSettings',
                         f'ds_hf_{name}',
                         str(hard))
+                
+                self.root._add_to_history(*history_args)
                 return
-
             def get_discontinuities(self):
                 out = dict()
                 out['enable'] = bool(
@@ -2294,6 +2311,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 covariance_difference: 0-100%, with soft <= hard
                 all other values: 0-100s
                 """
+                history_args = ('Advanced-Statistical', 'timelags', self.get_timelags)
+                self.root._add_to_history(*history_args, True)
+
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 if not (
@@ -2351,8 +2371,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'RawProcess_ParameterSettings',
                     'tl_def_n2o',
                     str(gas4))
-                return
 
+                self.root._add_to_history(*history_args)
+                return
             def get_timelags(self):
                 out = dict()
                 out['enable'] = bool(
@@ -2396,6 +2417,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 aoa_max: 0 - 90°
                 accepted_outliers: 0-100%
                 """
+
+                history_args = ('Advanced-Statistical', 'angle_of_attack', self.get_angle_of_attack)
+                self.root._add_to_history(*history_args, True)
+
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 assert or_isinstance(aoa_min, int, float) and in_range(
@@ -2422,6 +2447,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'RawProcess_ParameterSettings',
                     'aa_lim',
                     str(accepted_outliers))
+                
+                self.root._add_to_history(*history_args)
                 return
 
             def get_angle_of_attack(self):
@@ -2457,6 +2484,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 max_rel_inst should be within the interval [0, 50]
                 """
+
+                history_args = ('Advanced-Statistical', 'steadiness_of_horizontal_wind', self.steadiness_of_horizontal_wind)
+                self.root._add_to_history(*history_args, True)
+
                 assert or_isinstance(
                     enable, int, bool), 'enable should be int or bool'
                 assert or_isinstance(max_rel_inst, int, float) and in_range(
@@ -2471,8 +2502,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'RawProcess_ParameterSettings',
                     'ns_hf_lim',
                     str(max_rel_inst))
+                
+                self.root._add_to_history(*history_args)
                 return
-
             def get_steadiness_of_horizontal_wind(self):
                 out = dict()
                 out['enable'] = bool(
@@ -2500,6 +2532,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 maximum_correlation_period: maximum time to integrate over when determining the integral turbulence scale. Default is 10.0s. Must be within [0, 10000] seconds
                 """
 
+                history_args = ('Advanced-Statistical', 'estimate_random_uncertainty', self.estimate_random_uncertainty)
+                self.root._add_to_history(*history_args, True)
+
                 assert isinstance(method, str) or method in range(
                     4), 'method must be one of disable (0), FS01 (1), ML94 (2), or M98 (3)'
                 assert isinstance(its_definition, str) or its_definition in range(
@@ -2526,7 +2561,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'Project',
                     'ru_tlag_max',
                     str(maximum_correlation_period))
-
+                
+                self.root._add_to_history(*history_args)
                 return
 
             def get_estimate_random_uncertainty(self):
