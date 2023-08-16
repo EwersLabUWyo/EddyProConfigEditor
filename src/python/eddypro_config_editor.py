@@ -2450,7 +2450,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
                 self.root._add_to_history(*history_args)
                 return
-
             def get_angle_of_attack(self):
                 out = dict()
                 out['enable'] = bool(
@@ -2590,6 +2589,35 @@ class EddyproConfigEditor(configparser.ConfigParser):
             def __init__(self, outer):
                 self.root = outer.root
                 self.outer = outer
+
+            def set_spectra_and_cospectra_calculation(
+                self,
+                binned_files: str | PathLike[str] | False = False,
+                start: str | datetime.datetime | Literal['project'] = 'project',
+                end: str | datetime.datetime | Literal['project'] = 'project',
+                window: Literal['squared', 'bartlett', 'welch', 'hamming', 'hann'] | int = 'hamming',
+                bins: int = 50,
+                power_2: bool | int = True
+            ):
+                """
+                Parameters
+                ----------
+                binned_files: either a str or pathlike object pointing to a proper set of binned cospectra files or None (default) to indicate to eddypro to compute co-spectra on-the-fly. If None, binned cospectra will be output automatically.
+                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
+                window: the tapering window to use. One of squared (0), bartlett (1), welch (2), hamming (3, default), or hann (4).
+                bins: the number of bins to use for cospectra reduction. Default 50.
+                power_2: whether to use the nearest power-of-two number of samples when computing the FFT to speed up analysis. Default True
+
+                limits on inputs
+                bins: 10-3000
+                """
+                history_args = ('Advanced-Spectra', 'spectra_and_cospectra_calculation', self.get_spectra_and_cospectra_calculation)
+                self.root._add_to_history(*history_args, True)
+
+                self.root._add_to_history(*history_args)
+                return
+            def get_spectra_and_cospectra_calculation(self):
+                return
 
 if __name__ == '__main__':
     from copy import copy
