@@ -2592,7 +2592,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             def set_spectra_and_cospectra_calculation(
                 self,
-                binned_files: str | PathLike[str] | False = False,
+                binned_cosp_dir: str | PathLike[str] | None = None,
                 start: str | datetime.datetime | Literal['project'] = 'project',
                 end: str | datetime.datetime | Literal['project'] = 'project',
                 window: Literal['squared', 'bartlett', 'welch', 'hamming', 'hann'] | int = 'hamming',
@@ -2602,23 +2602,152 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 """
                 Parameters
                 ----------
-                binned_files: either a str or pathlike object pointing to a proper set of binned cospectra files or None (default) to indicate to eddypro to compute co-spectra on-the-fly. If None, binned cospectra will be output automatically.
-                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
-                window: the tapering window to use. One of squared (0), bartlett (1), welch (2), hamming (3, default), or hann (4).
-                bins: the number of bins to use for cospectra reduction. Default 50.
-                power_2: whether to use the nearest power-of-two number of samples when computing the FFT to speed up analysis. Default True
+                binned_cosp_dir: either a str or pathlike object pointing to a directory of eddypro-readable binned cospectra files for this dataset. If None (default) to indicate to eddypro to compute co-spectra on-the-fly. If None, binned cospectra will be output automatically.
+                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well. 
+                window: the tapering window to use. One of squared (0), bartlett (1), welch (2), hamming (3, default), or hann (4). Ignored if binned_cosp_dir is provided.
+                bins: the number of bins to use for cospectra reduction. Default 50. Ignored if binned_cosp_dir is provided.
+                power_2: whether to use the nearest power-of-two number of samples when computing the FFT to speed up analysis. Default True. Ignored if binned_cosp_dir is provided.
 
                 limits on inputs
                 bins: 10-3000
                 """
                 history_args = ('Advanced-Spectra', 'spectra_and_cospectra_calculation', self.get_spectra_and_cospectra_calculation)
                 self.root._add_to_history(*history_args, True)
+                
+                if binned_cosp_dir is not None:
+                    assert or_isinstance(binned_cosp_dir, str, Path, bool), 'binned_files must be a file path or None'
+                assert or_isinstance(start, int, datetime.datetime), 'starting timestamp must be string or datetime.datetime'
+                assert or_isinstance(end, int, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
+                if isinstance(start, str):
+                    assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    if start == 'project':
+                        assert end == 'project', 'if one of start, end is "project", the other must be as well.'
+                if isinstance(end, str):
+                    assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    if end == 'project':
+                        assert start == 'project', 'if one of start, end is "project", the other must be as well.'
+                assert window in ['squared', 'bartlett', 'welch', 'hamming', 'hann', 0, 1, 2, 3, 4], 'window must be one of squared (0), bartlett (1), welch (2), hamming (3, default), or hann (4).'
+                assert bins % 1 == 0 and in_range(bins, '[10, 3000]'), 'bins must have no decimal part and be between 10 and 3000'
+                assert or_isinstance(power_2, bool, int), 'power_2 must be bool or int.'
+
+                # binned cospectra
+                self.root.set('Project', 'bin_sp_avail', '0')
+                if binned_cosp_dir is not None:
+                    self.root.set('Project', 'bin_sp_avail', '1')
+                    self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_bin_spectra', str(binned_cosp_dir))
+                
+                # processing dates
+                # process dates
+                sa_subset = 1
+                if start == 'project':
+                    sa_subset = 0
+                    sa_start = self.root.Basic.get_start_date()
+                    sa_start_date, sa_start_time = sa_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                elif isinstance(start, datetime.datetime):
+                    sa_start = start
+                    sa_start_date, sa_start_time = sa_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                else:
+                    sa_start = start
+                    sa_start_date, sa_start_time = sa_start.split(' ')
+                if end == 'project':
+                    sa_end = self.root.Basic.get_end_date()
+                    sa_end_date, sa_end_time = sa_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                elif isinstance(end, datetime.datetime):
+                    sa_end = end
+                    sa_end_date, sa_end_time = sa_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                else:
+                    sa_end = end
+                    sa_end_date, sa_end_time = sa_end.split(' ')
+                # check that the date range is valid for this project
+                overlap = self.root.check_dates(interval=(sa_start, sa_end), reference='project', min_overlap=14).days
+                if overlap < 30:
+                    warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between time lag optimization time window ({sa_start} -> {sa_end}) and project time window ({self.root.Basic.get_start_date()} -> {self.root.Basic.get_end_date()}). At least 30 days are required')
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_date', sa_start_date)
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_time', sa_start_time)
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_date', sa_end_date)
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_time', sa_end_time)
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_subset', str(sa_subset))
+                
+                if binned_cosp_dir is None:
+                    # window
+                    win_dict = {k:v for k, v in zip(['squared', 'bartlett', 'welch', 'hamming', 'hann'], range(500))}
+                    if window in win_dict:
+                        window = win_dict[int(window)]
+                    self.root.set('RawProcess_Settings', 'tap_win', str(window))
+
+                    # bins
+                    self.root.set('RawProcess_Settings', 'nbins', str(int(bins)))
+
+                    # power-of-2
+                    self.root.set('RawProcess_Settings', 'power_of_2', str(int(bool(power_2))))
 
                 self.root._add_to_history(*history_args)
                 return
             def get_spectra_and_cospectra_calculation(self):
-                return
+                out = dict()
 
+                # processing files
+                out['binned_cosp_dir'] = bool(int(self.root.get('Project', 'bin_sp_avail')))
+
+                # dates
+                if int(self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_subset', '1')):
+                    out['start'] = 'project'
+                    out['end'] = 'project'
+                else:
+                    out['start'] = (
+                        self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_date') 
+                        + ' '
+                        + self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_time'))
+                    out['end'] = (
+                        self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_date') 
+                        + ' '
+                        + self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_time'))
+                
+                if not out['binned_cosp_dir']:
+                    out['window'] = ['squared', 'bartlett', 'welch', 'hamming', 'hann'][int(self.root.set('RawProcess_Settings', 'tap_win'))]
+                    out['bins'] = int(self.root.set('RawProcess_Settings', 'nbins'))
+                    out['power_2'] = bool(int(self.root.set('RawProcess_Settings', 'power_of_2')))
+                return
+            
+            def set_removal_of_high_frequency_noise(
+                self,
+                co2: float = 1.0,
+                h2o: float = 1.0,
+                ch4: float = 1.0,
+                gas4: float = 1.0,
+            ):
+                """
+                Parameters
+                ----------
+                for each gas, provide the lowest frequency representing blue noise. If 0, do not remove noise.
+
+                limits on inputs
+                0 - 50Hz
+                """
+                history_args = ('Advanced-Spectra', 'removal_of_high_frequency_noise', self.get_removal_of_high_frequency_noise)
+                self.root._add_to_history(*history_args, True)
+                
+                assert in_range(co2, '[0, 50]'), 'co2 must be between 0 and 50'
+                assert in_range(h2o, '[0, 50]'), 'h2o must be between 0 and 50'
+                assert in_range(ch4, '[0, 50]'), 'ch4 must be between 0 and 50'
+                assert in_range(gas4, '[0, 50]'), 'gas4 must be between 0 and 50'
+
+
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_co2_fmin', str(co2))
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_h2o_fmin', str(h2o))
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_ch4_fmin', str(ch4))
+                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_gas4_fmin', str(gas4))
+                
+                self.root._add_to_history(*history_args)
+                return
+            def get_removal_of_high_frequency_noise(self):
+                out = dict()
+                out['co2'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_co2_fmin')
+                out['h2o'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_h2o_fmin')
+                out['ch4'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_ch4_fmin')
+                out['gas4'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_gas4_fmin')
+                return out
+            
 if __name__ == '__main__':
     from copy import copy
 
