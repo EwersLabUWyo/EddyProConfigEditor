@@ -3150,6 +3150,49 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.root = outer.root
                 self.outer = outer
 
+            def set_output(
+                self,
+                mode: Literal['minimal', 'typical', 'thorough'] | int | None = None,
+                full_output: bool = False,
+                format: Literal['available', 'standard'] | int = 'available',
+                fluxnet_labels_units: bool = True,
+                err_label: Literal['fluxnet', '-9999.0', '-6999.0', 'NaN', 'Error', 'N/A', 'NOOP'] = 'fluxnet',
+                continuous: bool = True,
+                biomet: bool = True,
+                details_f04: bool = False,
+                metadata: bool = True,
+                binned_spectra: bool = True,  # NEED FOR MANY SPECTRAL METHODS
+                binned_ogives: bool = False,
+                ensemble_spectra: bool = False,
+                ensemble_cospectra: bool = False,
+                full_spectra: Sequence | dict | bool = False,
+                full_cospectra: Sequence | dict | bool = dict(ts=1),  # NEED FOR FRATINI
+            ):
+                pass
+            def get_output(self):
+                pass
+
+            def set_chain_of_custory(
+                self,
+                unprocessed: Literal['stats', 'timeseries', 'both', 'none'] = 'stats',
+                despiked: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
+                crosswind_corrected: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
+                aoa_corrected: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
+                tilt_corrected: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
+                timelag_corrected: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
+                detrended: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
+                variables: Sequence[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa']] | 'all' | None = None
+            ):
+                """Which levels of output to generate.
+                Parameters
+                ----------
+                for each parameter other than variables: one of 'stats', 'timeseries', 'both', or 'none' specifying whether to output just the statistics, or the full timeseries for that level of processing.
+                variables: sequence of strings indicating which timeseries to output data for when timeseries is selected"""
+                pass
+            def get_chain_of_custody(self):
+                pass
+            
+
 
             
 if __name__ == '__main__':
