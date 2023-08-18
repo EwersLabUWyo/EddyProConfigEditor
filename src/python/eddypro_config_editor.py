@@ -1321,9 +1321,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
                 # lag settings default to "automatic detection" for the value -1000.1
                 settings_with_special_defaults = [
-                    h2o_lags
-                    ch4_lags
-                    co2_lags
+                    h2o_lags,
+                    ch4_lags,
+                    co2_lags,
                     gas4_lags]
                 for i, setting in enumerate(settings_with_special_defaults):
                     if setting is None:
@@ -2590,7 +2590,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.root = outer.root
                 self.outer = outer
 
-            def set_spectra_and_cospectra_calculation(
+            def set_calculation(
                 self,
                 binned_cosp_dir: str | PathLike[str] | None = None,
                 start: str | datetime.datetime | Literal['project'] = 'project',
@@ -2602,7 +2602,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 """
                 Parameters
                 ----------
-                binned_cosp_dir: either a str or pathlike object pointing to a directory of eddypro-readable binned cospectra files for this dataset. If None (default) to indicate to eddypro to compute co-spectra on-the-fly. If None, binned cospectra will be output automatically.
+                binned_cosp_dir: either a str or pathlike object pointing to a directory of eddypro-readable binned cospectra files for this dataset. If None (default) to indicate to eddypro to compute co-spectra on-the-fly. If None, it is HIGHLY recommended to set eddypro to output binned spectra in the output section.
                 start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well. 
                 window: the tapering window to use. One of squared (0), bartlett (1), welch (2), hamming (3, default), or hann (4). Ignored if binned_cosp_dir is provided.
                 bins: the number of bins to use for cospectra reduction. Default 50. Ignored if binned_cosp_dir is provided.
@@ -2611,7 +2611,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 limits on inputs
                 bins: 10-3000
                 """
-                history_args = ('Advanced-Spectra', 'spectra_and_cospectra_calculation', self.get_spectra_and_cospectra_calculation)
+                history_args = ('Advanced-Spectral', 'calculation', self.get_calculation)
                 self.root._add_to_history(*history_args, True)
                 
                 if binned_cosp_dir is not None:
@@ -2683,7 +2683,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 self.root._add_to_history(*history_args)
                 return
-            def get_spectra_and_cospectra_calculation(self):
+            def get_calculation(self):
                 out = dict()
 
                 # processing files
@@ -2724,7 +2724,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 limits on inputs
                 0 - 50Hz
                 """
-                history_args = ('Advanced-Spectra', 'removal_of_high_frequency_noise', self.get_removal_of_high_frequency_noise)
+                history_args = ('Advanced-Spectral', 'removal_of_high_frequency_noise', self.get_removal_of_high_frequency_noise)
                 self.root._add_to_history(*history_args, True)
                 
                 assert in_range(co2, '[0, 50]'), 'co2 must be between 0 and 50'
@@ -2747,6 +2747,413 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 out['ch4'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_ch4_fmin')
                 out['gas4'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_hfn_gas4_fmin')
                 return out
+            
+            def set_qaqc(
+                self,
+                ustar: Sequence[float, float, float] = (0.2, 0.05, 5.0),
+                h: Sequence[float, float, float] = (20., 5., 1000.),
+                le: Sequence[float, float, float] = (20., 3., 1000.),
+                fco2: Sequence[float, float, float] = (2., 0.5, 100.),
+                fch4: Sequence[float, float, float] = (0.01, 0.005, 20.),
+                fgas4: Sequence[float, float, float] = (0.01, 0.005, 20.),
+                n_min: int = 10,
+                filter_vm97: int | bool  = True,
+                filter_mf04: Literal['low', 'moderate', 'none'] = 'low'
+            ):
+                """
+                see EddyPro manual on QA/QC of spectra and cospectra for explanation of settings.
+                Parameters
+                ----------
+                ustar: sequence of (min_unstable, min_stable, max) providing the minimum reasonable values of ustar in unstable and stable conditions, respectively, and the maximum reasonable ustar in any conditions. Default (0.2, 0.05, 5.0) m/s
+                h: same as ustar, but for magnitude of sensible heat flux. Default (20., 5., 1000.) W/m2
+                le: same as ustar but for magnitude of latent heat flux. Default (20., 3., 1000.) W/m2.
+                fco2: same as ustar, but for magnitude of co2 flux. Default (2., 0.5, 100.) µmol/m2/s
+                fch4: same as ustar, but for magnitude of ch4 flux. Default (0.01, 0.005, 20.) µmol/m2/s
+                fgas4: same as ustar, but for magnitude of gas4 flux. Default (0.01, 0.005, 20.) µmol/m2/s
+                n_min: int for the minimum number of cospectra for valid averages. Default 10.
+                filter_vm97: int or bool representing whether to omit from spectral caluclations time periods flagged by the vickers and mahrt quality tests in the Advanced/Statistical section, specifically the tests (1) number of spikes; (2) drop-outs; (3) skewness & kurtosis; and (4) discontinuities. Default True.
+                filter_mf04: 'low' (default), 'moderate', or 'none' indicating how to filter spectral data before aggregating using Mauder and Foken 2004. If 'low' (default), only filter out low-quality time periods. If 'moderate', filter out both low- and moderate-quality time periods. If 'none,' do not filter.
+
+                limits on inputs
+                ustar: 0-5
+                h: 0-10_000
+                le: 0-10_000
+                fco2: 0-5_000
+                fch4: 0-5_000
+                fgas4: 0-5_000
+                n_min: 1-1_000
+                """
+                history_args = ('Advanced-Spectra', 'qaqc', self.get_qaqc)
+                self.root._add_to_history(*history_args, True)
+                # check inputs
+                for v in [ustar, h, le, fco2, fch4, fgas4]:
+                    assert isinstance(v, Sequence), 'ustar, h, le, fco2, fch4, fgas4 must be numeric sequences of length 3'
+                    assert len(v) == 3, 'ustar, h, le, fco2, fch4, fgas4 must be numeric sequences of length 3'
+                    for iv in v: 
+                        assert or_isinstance(iv, float, int), 'ustar, h, le, fco2, fch4, fgas4 must be numeric sequences of length 3'
+                assert in_range(ustar, '[0, 5]'), 'ustar must be between 0 and 5m/s'
+                assert in_range(h, '[0, 10_000]'), 'h must be between 0 and 10_000W/m2'
+                assert in_range(le, '[0, 10_000]'), 'le must be between 0 and 10_000W/m2'
+                assert in_range(fco2, '[0, 5_000]'), 'fco2 must be between 0 and 10_000µmol/m2/s'
+                assert in_range(fch4, '[0, 5_000]'), 'fch4 must be between 0 and 10_000µmol/m2/s'
+                assert in_range(fgas4, '[0, 5_000]'), 'fgas4 must be between 0 and 10_000µmol/m2/s'
+                assert n_min % 1 == n_min, 'n_min must have no decimal part'
+                assert in_range(n_min, '[1, 1000]'), 'n_min must be between 1 and 1000'
+                assert filter_mf04 in ['low', 'moderate', 'none'], 'filter_mf04 must be one of low, moderate or none.'
+
+                # set min/max
+                section = 'FluxCorrection_SpectralAnalysis_General'
+                def set_minmax(name, v):
+                    un, st, mx = v
+                    self.root.set(section, f'sa_min_un_{name}', str(un))
+                    self.root.set(section, f'sa_min_st_{name}', str(st))
+                    self.root.set(section, f'sa_max_{name}', str(mx))
+                set_minmax('ustar', ustar)
+                set_minmax('h', h)
+                set_minmax('le', le)
+                set_minmax('fco2', fco2)
+                set_minmax('fch4', fch4)
+                set_minmax('fgas4', fgas4)
+                
+                # n_min
+                self.root.set(section, 'sa_min_smpl', str(int(n_min)))
+
+                # quality flags
+                filter_vm97 = int(bool(filter_vm97))
+                self.root.set(section, 'sa_use_vm_flags', str(filter_vm97))
+
+                match filter_mf04:
+                    case 'low':
+                        self.root.set(section, 'sa_use_foken_low', '1')
+                        self.root.set(section, 'sa_use_foken_mid', '0')
+                    case 'moderate':
+                        self.root.set(section, 'sa_use_foken_low', '1')
+                        self.root.set(section, 'sa_use_foken_mid', '1')
+                    case 'none':
+                        self.root.set(section, 'sa_use_foken_low', '0')
+                        self.root.set(section, 'sa_use_foken_mid', '0')
+                
+                self.root._add_to_history(*history_args)
+                return
+            def get_qaqc(self):
+                out = dict()
+
+                section = 'FluxCorrection_SpectralAnalysis_General'
+                out['ustar'] = (
+                    float(self.root.get(section, 'sa_min_un_ustar')), 
+                    float(self.root.get(section, 'sa_min_st_ustar')), 
+                    float(self.root.get(section, 'sa_max_ustar')))
+                out['h'] = (
+                    float(self.root.get(section, 'sa_min_un_h')), 
+                    float(self.root.get(section, 'sa_min_st_h')), 
+                    float(self.root.get(section, 'sa_max_h')))
+                out['le'] = (
+                    float(self.root.get(section, 'sa_min_un_le')), 
+                    float(self.root.get(section, 'sa_min_st_le')), 
+                    float(self.root.get(section, 'sa_max_le')))
+                out['fco2'] = (
+                    float(self.root.get(section, 'sa_min_un_fco2')), 
+                    float(self.root.get(section, 'sa_min_st_fco2')), 
+                    float(self.root.get(section, 'sa_max_fco2')))
+                out['fch4'] = (
+                    float(self.root.get(section, 'sa_min_un_fch4')), 
+                    float(self.root.get(section, 'sa_min_st_fch4')), 
+                    float(self.root.get(section, 'sa_max_fch4')))
+                out['fgas4'] = (
+                    float(self.root.get(section, 'sa_min_un_fgas4')), 
+                    float(self.root.get(section, 'sa_min_st_fgas4')), 
+                    float(self.root.get(section, 'sa_max_fgas4')))
+                
+                out['n_min'] = int(self.root.get(section, 'sa_min_smpl'))
+
+                out['filter_vm97'] = bool(int(self.root.get(section, 'sa_use_vm_flags')))
+
+                mf04_low = int(self.root.get(section, 'sa_use_foken_low'))
+                mf04_mod = int(self.root.get(section, 'sa_use_foken_mid'))
+                
+                match mf04_low, mf04_mod:
+                    case 0, 0: out['filter_mf04'] = 'none'
+                    case 1, 0: out['filter_mf04'] = 'low'
+                    case 1, 1: out['filter_mf04'] = 'moderate'
+                    case _:
+                        warnings.warn('WARNING: found filter_mf04 to have an invalid configuration. Setting to moderate.')
+                        out['filter_mf04'] = 'moderate'
+                return out
+
+            def set_lf_correction(self, enable: bool = True):
+                """whether to apply analytic correction of high-pass filtering affects.
+                Parameters
+                ---------
+                enable: bool. If true (default), apply analytic correction of high-pass filtering effects from Moncrieff et al, 2004"""
+                history_args = ('Advanced-Spectra', 'low_freq_correction', self.low_freq_correction)
+                self.root._add_to_history(*history_args, True)
+                
+                assert isinstance(enable, bool), 'low must be bool'
+                self.root.set('Project', 'lf_meth', str(int(enable)))
+
+                self.root._add_to_history(*history_args)
+                return
+            def get_lf_correction(self): return dict(enable=bool(int(self.root.get('Project', 'lf_meth'))))
+
+            def _configure_horst(
+                self,
+                assessment_file: PathLike | str | False = False,
+                co2: Sequence[float, float] = (0.005, 2.),
+                h2o: Sequence[float, float] = (0.005, 2.),
+                ch4: Sequence[float, float] = (0.005, 2.),
+                gas4: Sequence[float, float] = (0.005, 2.),
+            ) -> dict:
+                """
+                configure the settings needed to use Horst 1997 spectral corrections
+
+                Parameters
+                ----------
+                assessment_file: path to a spectral assessment file for this dataset. If False (none), compute spectral assessment on-the-fly
+                co2/h2o/ch4/gas4: sequence of the form (low, high) indicating the the frequency range for fitting in-situe transfer functions, based on temperature and concentration spectra. Default 0-005-2Hz.
+
+                limits on inputs
+                all inputs 0-50Hz, with high > low
+
+                Returns
+                dicts of ini parameter settings
+                """
+                # check inputs
+                if assessment_file is not None:
+                    assert or_isinstance(assessment_file, Path, str), 'assessment_file must be a path, str, or None'
+                for v in [co2, h2o, ch4, gas4]:
+                    assert isinstance(v, Sequence), 'co2, h2o, ch4, and gas4 must be sequences of the form (low, high) with 0Hz < low < high <= 50Hz'
+                    assert len(v) == 2,'co2, h2o, ch4, and gas4 must be sequences of the form (low, high) with 0Hz < low < high <= 50Hz'
+                    assert v[1] > v[0], 'co2, h2o, ch4, and gas4 must be sequences of the form (low, high) with 0Hz < low < high <= 50Hz'
+                    assert v[0] >= 0,'co2, h2o, ch4, and gas4 must be sequences of the form (low, high) with 0Hz < low < high <= 50Hz'
+                    assert v[1] <= 50,'co2, h2o, ch4, and gas4 must be sequences of the form (low, high) with 0Hz < low < high <= 50Hz'
+
+                FluxCorrection_SpectralAnalysis_General = dict()
+                RawProcess_Settings = dict()
+
+                
+                # assessment file?
+                FluxCorrection_SpectralAnalysis_General['sa_mode'] = 1
+                if assessment_file is not None:
+                    FluxCorrection_SpectralAnalysis_General['sa_mode'] = 0
+                    FluxCorrection_SpectralAnalysis_General['sa_file'] = assessment_file
+                    return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_Settings=RawProcess_Settings)
+                
+                FluxCorrection_SpectralAnalysis_General['sa_fmin_co2'] = co2[0]
+                FluxCorrection_SpectralAnalysis_General['sa_fmax_co2'] = co2[1]
+                
+                FluxCorrection_SpectralAnalysis_General['sa_fmin_h20'] = h2o[0]
+                FluxCorrection_SpectralAnalysis_General['sa_fmax_h20'] = h2o[1]
+                
+                FluxCorrection_SpectralAnalysis_General['sa_fmin_ch4'] = ch4[0]
+                FluxCorrection_SpectralAnalysis_General['sa_fmax_ch4'] = ch4[1]
+                
+                FluxCorrection_SpectralAnalysis_General['sa_fmin_gas4'] = gas4[0]
+                FluxCorrection_SpectralAnalysis_General['sa_fmax_gas4'] = gas4[1]
+
+                # when spectral assessment file is not available, all binnned cospectra must be output
+                RawProcess_Settings['out_bin_sp'] = 1
+                
+                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_Settings=RawProcess_Settings)
+            
+            def _configure_ibrom(
+                self,
+                assessment_file: PathLike | str | False = False,
+                co2: Sequence[float, float] = (0.005, 2.),
+                h2o: Sequence[float, float] = (0.005, 2.),
+                ch4: Sequence[float, float] = (0.005, 2.),
+                gas4: Sequence[float, float] = (0.005, 2.),
+                separation: Literal['none', 'uvw', 'vw'] | int = 'none'
+            ) -> dict:
+                """
+                configure the settings needed to use Ibrom 2007 spectral corrections
+
+                Parameters
+                ----------
+                assessment_file: path to a spectral assessment file for this dataset. If False (none), compute spectral assessment on-the-fly
+                co2/h2o/ch4/gas4: sequence of the form (low, high) indicating the the frequency range for fitting in-situe transfer functions, based on temperature and concentration spectra. Default 0-005-2Hz.
+                separation: how to correct for instrument separation. If none or 0 (default), do not correct for instrument separation. If uvw or 1, correct for separation in the u, v, and w directions. If vw, only correct for separation in the v and w directions. 
+
+
+                limits on inputs
+                all inputs 0-50Hz, with high > low
+
+                Returns
+                dicts of ini parameter settings
+                """
+
+                assert separation in ['none', 'uvw', 'vw', 0, 1, 2], 'separation must be one of none (0), uvw (1), vw (2)'
+
+                # all horst settings also apply to ibrom
+                FluxCorrection_SpectralAnalysis_General, RawProcess_Settings = self._configure_horst(assessment_file, co2, h2o, ch4, gas4).values()
+
+                methods = {k:v for k, v in zip(['none', 'uvw', 'vw'], range(1000))}
+                if separation in methods:
+                    separation = methods[separation]
+                FluxCorrection_SpectralAnalysis_General['horst_lens'] = separation
+                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_Settings=RawProcess_Settings)
+
+            def _configure_fratini(
+                self,
+                assessment_file: PathLike | str | False = False,
+                co2: Sequence[float, float] = (0.005, 2.),
+                h2o: Sequence[float, float] = (0.005, 2.),
+                ch4: Sequence[float, float] = (0.005, 2.),
+                gas4: Sequence[float, float] = (0.005, 2.),
+                separation: Literal['none', 'uvw', 'vw'] | int = 'none',
+                full_wts_dir: str | PathLike[str] | None = None,
+                include_anemometer_losses: bool = True
+            ) -> dict:
+                """
+                configure the settings needed to use Fratini 2012 spectral corrections
+
+                Parameters
+                ----------
+                assessment_file: path to a spectral assessment file for this dataset. If False (none), compute spectral assessment on-the-fly
+                co2/h2o/ch4/gas4: sequence of the form (low, high) indicating the the frequency range for fitting in-situe transfer functions, based on temperature and concentration spectra. Default 0-005-2Hz.
+                separation: how to correct for instrument separation. If none or 0 (default), do not correct for instrument separation. If uvw or 1, correct for separation in the u, v, and w directions. If vw, only correct for separation in the v and w directions. 
+                full_wts_dir: if full-length w/Ts cospectra are available for this dataset, provide a path to that directory. If None (default), compute full w/Ts cospectra on the fly.
+                include_anemometer_losses: if True (default), correct w/Ts cospectra for anemometer path averaging and time response losses before using them as a model. 
+
+                limits on inputs
+                all inputs 0-50Hz, with high > low
+
+                Returns
+                dicts of ini parameter settings
+                """
+                
+                # check inputs
+                if full_wts_dir is not None:
+                    assert or_isinstance(full_wts_dir, str, Path), 'full_wts_dir must be a str or path to a directory'
+                assert isinstance(include_anemometer_losses, bool), 'include_anemometer_losses must be bool'
+
+                # horst and ibrom settings also apply to fratini
+                FluxCorrection_SpectralAnalysis_General, RawProcess_settings = self._configure_ibrom(assessment_file, co2, h2o, ch4, gas4, separation).values()
+                
+
+                Project = dict()
+
+                # if full spectra are available, we don't need full spectra outputs.
+                Project['full_sp_avail'] = 0
+                RawProcess_settings['out_full_cosp_w_ts'] = 1
+                if full_wts_dir is not None:
+                    FluxCorrection_SpectralAnalysis_General['sa_full_spectra'] = full_wts_dir
+                    Project['full_sp_avail'] = 1
+                    RawProcess_settings['out_full_cosp_w_ts'] = 0
+                
+                FluxCorrection_SpectralAnalysis_General['add_sonic_lptf'] = int(include_anemometer_losses)
+
+                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_settings=RawProcess_settings, Project=Project)
+            
+            def set_hf_correction(
+                self,
+                low_pass_method: Literal['none', 'moncrieff', 'horst', 'ibrom', 'fratini', 'massman'] | int = 'moncrieff',
+                horst_kwargs: dict | None = None,
+                ibrom_kwargs: dict | None = None,
+                fratini_kwargs: dict | None = None,
+            ):
+                """how to apply low-pass filtering effects
+                Parameters
+                ---------
+                low_pass_method: one of 'none', 'moncrieff', 'horst', 'ibrom', 'fratini', 'massman' or int 0-5 to indicate whih low-pass filtering correction method to apply. If 'horst', 'ibrom', or 'fratini' is selected, then the corresponding kwargs dict must be provided too.
+                horst/ibrom_fratini_kwargs: kwargs passed to one of _configure_horst, _configure_ibrom, or _configure_fratini. 
+                """
+                # history
+                history_args = ('Advanced-Spectra', 'hf_correction', self.get_hf_correction)
+                self.root._add_to_history(*history_args, True)
+                
+                # check inputs
+                methods = ['none', 'moncrieff', 'horst', 'ibrom', 'fratini', 'massman']
+                assert or_isinstance(low_pass_method, str, int), "low_pass_method must be one of 'none' (0), 'moncrieff' (1), 'horst' (2), 'ibrom' (3), 'fratini' (4), or 'massman' (5)"
+                if isinstance(low_pass_method, str):
+                    assert low_pass_method in methods, "low_pass_method must be one of 'none' (0), 'moncrieff' (1), 'horst' (2), 'ibrom' (3), 'fratini' (4), or 'massman' (5)"
+                if isinstance(low_pass_method, int):
+                    assert in_range(low_pass_method, '[0, 5]'), "low_pass_method must be one of 'none' (0), 'moncrieff' (1), 'horst' (2), 'ibrom' (3), 'fratini' (4), or 'massman' (5)"
+                    low_pass_method = methods[low_pass_method]
+                
+                # none, moncrieff, and massman require no settings
+                # horst, ibrom, and fratini require additoinal settings
+                settings = None
+                match low_pass_method:
+                    case 'none':
+                        if horst_kwargs is not None or ibrom_kwargs is not None or fratini_kwargs is not None:
+                            warnings.warn('WARNING: no correction method provided. Ignoring all method-specific kwargs')
+                        self.root.set('Project', 'hf_meth', '0')
+                    case 'moncrieff':
+                        if horst_kwargs is not None or ibrom_kwargs is not None or fratini_kwargs is not None:
+                            warnings.warn('WARNING: moncrieff method provided. Ignoring all method-specific kwargs')
+                        self.root.set('Project', 'hf_meth', '1')
+                    case 'horst':
+                        assert isinstance(horst_kwargs, dict), 'horst_kwargs must be a dict of kwargs to pass to _configure_horst'
+                        if ibrom_kwargs is not None or fratini_kwargs is not None:
+                            warnings.warn('WARNING: horst method provided. Ignoring ibrom and fratini kwargs')
+                        self.root.set('Project', 'hf_meth', '2')
+                        settings = self._configure_horst(**horst_kwargs)
+                    case 'ibrom':
+                        assert isinstance(ibrom_kwargs, dict), 'ibrom_kwargs must be a dict of kwargs to pass to _configure_ibrom'
+                        if ibrom_kwargs is not None or fratini_kwargs is not None:
+                            warnings.warn('WARNING: ibrom method provided. Ignoring horst and fratini kwargs')
+                        self.root.set('Project', 'hf_meth', '3')
+                        settings = self._configure_ibrom(**ibrom_kwargs)
+                    case 'fratini':
+                        assert isinstance(fratini_kwargs, dict), 'fratini_kwargs must be a dict of kwargs to pass to _configure_fratini'
+                        if ibrom_kwargs is not None or fratini_kwargs is not None:
+                            warnings.warn('WARNING: fratini method provided. Ignoring horst and ibrom kwargs')
+                        self.root.set('Project', 'hf_meth', '4')
+                        settings = self._configure_fratini(**fratini_kwargs)
+                    case 'massman':
+                        if horst_kwargs is not None or ibrom_kwargs is not None or fratini_kwargs is not None:
+                            warnings.warn('WARNING: massman method provided. Ignoring all method-specific kwargs')
+                        self.root.set('Project', 'hf_meth', '5')
+                    
+                if settings is not None:
+                    for section in settings:
+                        for option, value in settings[section].items():
+                            self.root.set(section, option, str(value))
+
+                self.root._add_to_history(*history_args)
+                return
+            
+            def get_hf_correction(self):
+                out = dict()
+
+                methods = ['none', 'moncrieff', 'horst', 'ibrom', 'fratini', 'massman']
+                method = methods[int(self.root.get('Project', 'hf_meth'))]
+
+                out['low_pass_method'] = method
+
+                method_kwargs = dict()
+                if method in ['horst', 'ibrom', 'fratini']:
+                    method_kwargs['method'] = dict()
+                    if not int(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_mode')):
+                        method_kwargs['assessment_file'] = self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_file')
+                    else:
+                        method_kwargs['co2'] = (
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmin_co2')), 
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmax_co2')))
+                        method_kwargs['h2o'] = (
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmin_h20')), 
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmax_h20')))
+                        method_kwargs['ch4'] = (
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmin_ch4')), 
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmax_ch4')))
+                        method_kwargs['gas4'] = (
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmin_gas4')), 
+                            float(self.root.get('FluxCorrections_SpectralAnalysis_General', 'sa_fmax_gas4')))
+                if method in ['ibrom', 'fratini']:
+                    separation_methods = ['none', 'uvw', 'vw']
+                    method_kwargs['separation'] = separation_methods[int(self.root.get('FluxCorrection_SpectralAnalysis_General', 'horst_lens'))]
+                if method == 'fratini':
+                    if int(self.root.get('Project', 'full_sp_avail')):
+                        method_kwargs['full_wts_dir'] = self.root.get('RawProcess_settings', 'out_full_cosp_w_ts')
+                    method_kwargs['include_anemometer_losses'] = bool(int(self.root.get('FluxCorrection_SpectralAnalysis_General', 'add_sonic_lptf')))
+                
+                match method:
+                    case 'horst': out['horst_kwargs'] = method_kwargs
+                    case 'ibrom': out['ibrom_kwargs'] = method_kwargs
+                    case 'fratini': out['fratini_kwargs'] = method_kwargs
+                
+                return out
+                
             
 if __name__ == '__main__':
     from copy import copy
