@@ -2585,11 +2585,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.root = outer.root
                 self.outer = outer
 
-        class _Output:
-            def __init__(self, outer):
-                self.root = outer.root
-                self.outer = outer
-
             def set_calculation(
                 self,
                 binned_cosp_dir: str | PathLike[str] | None = None,
@@ -2953,8 +2948,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # when spectral assessment file is not available, all binnned cospectra must be output
                 RawProcess_Settings['out_bin_sp'] = 1
                 
-                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_Settings=RawProcess_Settings)
-            
+                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_Settings=RawProcess_Settings)           
             def _configure_ibrom(
                 self,
                 assessment_file: PathLike | str | False = False,
@@ -2991,7 +2985,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     separation = methods[separation]
                 FluxCorrection_SpectralAnalysis_General['horst_lens'] = separation
                 return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_Settings=RawProcess_Settings)
-
             def _configure_fratini(
                 self,
                 assessment_file: PathLike | str | False = False,
@@ -3042,8 +3035,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
                 FluxCorrection_SpectralAnalysis_General['add_sonic_lptf'] = int(include_anemometer_losses)
 
-                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_settings=RawProcess_settings, Project=Project)
-            
+                return dict(FluxCorrection_SpectralAnalysis_General=FluxCorrection_SpectralAnalysis_General, RawProcess_settings=RawProcess_settings, Project=Project)          
             def set_hf_correction(
                 self,
                 low_pass_method: Literal['none', 'moncrieff', 'horst', 'ibrom', 'fratini', 'massman'] | int = 'moncrieff',
@@ -3111,8 +3103,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             self.root.set(section, option, str(value))
 
                 self.root._add_to_history(*history_args)
-                return
-            
+                return      
             def get_hf_correction(self):
                 out = dict()
 
@@ -3154,6 +3145,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
                 return out
                 
+        class _Output:
+            def __init__(self, outer):
+                self.root = outer.root
+                self.outer = outer
+
+
             
 if __name__ == '__main__':
     from copy import copy
