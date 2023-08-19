@@ -3165,8 +3165,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 binned_ogives: bool = False,
                 ensemble_spectra: bool = False,
                 ensemble_cospectra: bool = False,
-                full_spectra: Sequence | dict | bool = False,
-                full_cospectra: Sequence | dict | bool = dict(ts=1),  # NEED FOR FRATINI
+                full_spectra: Sequence[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'all', 'none']] = 'none',
+                full_cospectra: Sequence[Literal['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4', 'all', 'none']] = 'w/ts',  # NEED FOR FRATINI
             ):
                 pass
             def get_output(self):
@@ -3181,7 +3181,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 tilt_corrected: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
                 timelag_corrected: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
                 detrended: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
-                variables: Sequence[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa']] | 'all' | None = None
+                variables: Sequence[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa', 'all', 'none']] = 'none'
             ):
                 """Which levels of output to generate.
                 Parameters
