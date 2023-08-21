@@ -2682,10 +2682,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 out = dict()
 
                 # processing files
-                out['binned_cosp_dir'] = bool(int(self.root.get('Project', 'bin_sp_avail')))
+                if int(self.root.get('Project', 'bin_sp_avail')):
+                    out['binned_cosp_dir'] = self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_bin_spectra')
 
                 # dates
-                if int(self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_subset', '1')):
+                if int(self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_subset')):
                     out['start'] = 'project'
                     out['end'] = 'project'
                 else:
@@ -2698,7 +2699,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         + ' '
                         + self.root.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_time'))
                 
-                if not out['binned_cosp_dir']:
+                if 'binned_cosp_dir' not in out:
                     out['window'] = ['squared', 'bartlett', 'welch', 'hamming', 'hann'][int(self.root.set('RawProcess_Settings', 'tap_win'))]
                     out['bins'] = int(self.root.set('RawProcess_Settings', 'nbins'))
                     out['power_2'] = bool(int(self.root.set('RawProcess_Settings', 'power_of_2')))
@@ -3150,29 +3151,196 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.root = outer.root
                 self.outer = outer
 
-            def set_output(
+            def set_results(
                 self,
-                mode: Literal['minimal', 'typical', 'thorough'] | int | None = None,
-                full_output: bool = False,
-                format: Literal['available', 'standard'] | int = 'available',
+                full_output: bool = True,
+                output_only_available: bool = True,
                 fluxnet_labels_units: bool = True,
                 err_label: Literal['fluxnet', '-9999.0', '-6999.0', 'NaN', 'Error', 'N/A', 'NOOP'] = 'fluxnet',
                 continuous: bool = True,
                 biomet: bool = True,
                 details_f04: bool = False,
                 metadata: bool = True,
-                binned_spectra: bool = True,  # NEED FOR MANY SPECTRAL METHODS
-                binned_ogives: bool = False,
-                ensemble_spectra: bool = False,
-                ensemble_cospectra: bool = False,
-                full_spectra: Sequence[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'all', 'none']] = 'none',
-                full_cospectra: Sequence[Literal['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4', 'all', 'none']] = 'w/ts',  # NEED FOR FRATINI
             ):
-                pass
-            def get_output(self):
-                pass
+                """
+                Parameters
+                ----------
+                full_output: bool, whether to generate the main eddypro output file, the fulloutput file. Default True
+                output_only_available: if True (default), include in the fulloutput file only the results which are actually available, eliminating “error code” columns that are created when results are unavailable. If False output all results, whether they are available or not.
+                fluxnet_labels_units: bool, default True. If True, use the fluxnet standard for variable labels and units
+                err_label: str, one of 'fluxnet', '-9999.0', '-6999.0', 'NaN', 'Error', 'N/A', 'NOOP', default 'fluxnet'. If 'fluxnet', use the fluxnet standard fro error labelling. If any other input, use that string as the error label.
+                continuous: bool, default True, whether to output a continuous time series, with empty time slots filled with err_label
+                biomet: bool, default True, whether to output biomet data in a unique file.
+                details_f04: bool, default False, whether to report the details of the Foken et al 2004 steady state and developed turbulence tests
+                metadata: bool, default True, whether to output metadata as a single timeseries file, compatible with 'dynamic metadata' for eddypro
+                """
+                history_args = ('Output', 'results', self.get_results)
+                self.root._add_to_history(*history_args, True)
 
-            def set_chain_of_custory(
+                assert isinstance(full_output, bool), 'full_output must be bool'
+                assert isinstance(output_only_available, bool), 'output_format must be bool'
+                assert isinstance(fluxnet_labels_units, bool), 'fluxnet_labels_units must be bool'
+                assert err_label in ['fluxnet', '-9999.0', '-6999.0', 'NaN', 'Error', 'N/A', 'NOOP'], "err_label must be one of 'fluxnet', '-9999.0', '-6999.0', 'NaN', 'Error', 'N/A', 'NOOP'"
+                assert isinstance(continuous, bool), 'continuous must be bool'
+                assert isinstance(biomet, bool), 'biomet must be bool'
+                assert isinstance(details_f04, bool), 'details_f04 must be bool'
+                assert isinstance(metadata, bool), 'metadata must be bool'
+
+                self.root.set('Project', 'out_rich', str(int(full_output)))
+                self.root.set('Project', 'fix_out_format', str(1 - int(output_only_available)))
+                self.root.set('Project', 'fluxnet_standardize_biomet', str(int(fluxnet_labels_units)))
+
+                if err_label == 'fluxnet':
+                    self.root.set('Project', 'fluxnet_err_label', '1')
+                else:
+                    self.root.set('Project', 'fluxnet_err_label', '0')
+                    self.root.set('Project', 'err_label', err_label)
+                
+                self.root.set('Project', 'make_dataset', str(int(continuous)))
+                self.root.set('Project', 'out_biomet', str(int(biomet)))
+                self.root.set('Project', 'out_metadata', str(int(metadata)))
+                self.root.set('RawProcess_Settings', 'out_qc_details', str(int(details_f04)))
+
+                self.root._add_to_history(*history_args, False)
+                return
+            def get_results(self):
+                out = dict()
+                out['full_output'] = bool(int(self.root.get('Project', 'out_rich')))
+                out['output_only_available'] = bool(1 - int(self.root.get('Project', 'fix_out_format')))
+                out['fluxnet_labels_units'] = bool(int(self.root.get('Project', 'fluxnet_standardize_biomet')))
+                
+                if int(self.root.get('Project', 'fluxnet_err_label')):
+                    out['err_label'] = 'fluxnet'
+                else:
+                    out['err_label'] = self.root.get('Project', 'err_label')
+                
+                out['continuous'] = bool(int(self.root.get('Project', 'make_dataset')))
+                out['biomet'] = bool(int(self.root.get('Project', 'out_biomet')))
+                out['metadata'] = bool(int(self.root.get('Project', 'out_metadata')))
+                out['details_f04'] = bool(int(self.root.get('RawProcess_Settings', 'out_qc_details')))
+
+                return out
+
+            def set_spectral_output(
+                self,    
+                binned_spectra: bool = True,  # NEED FOR MANY SPECTRAL METHODS
+                binned_ogives: bool = True,
+                ensemble_spectra: bool = True,
+                ensemble_cospectra: bool = True,
+                full_spectra: Sequence[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4']] | Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'all', 'none'] = 'none',
+                full_cospectra: Sequence[Literal['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4']] | Literal['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4', 'all', 'none'] = 'w/ts',  # NEED FOR FRATINI
+            ):
+                """
+                Parameters
+                ----------
+                binned_spectra: bool, default True, whether to output binned spectra. This argument MUST be set to true when binned cospectra files are not available from a previous run (when binned_cosp_dir argument is None in Spectral.set_calculation)
+                binned_ogives: bool, default True, whether to output binned ogives
+                ensemble_spectra: bool, default True, whether to output ensemble averaged spectra
+                ensemble_cospectra: bool, default True, whether to output ensemble averaged cospectra
+                full_spectra: variables to output full-length spectra for. Sequence or string containing one or several of 'u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4'. Alternatively, provide 'all' to output all such variables, or 'none' to output none. Default 'none'.
+                full_cospectra: variables to output full-length cospectra for. Sequence or string containing one or several of 'w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4'. Alternatively, provide 'all' to output all such variables, or 'none' to output none. Default 'w/ts'. If using the Fratini method for high frequency corrections without full w/ts cospectra files available, this argument must include 'w/ts'
+                """
+                history_args = ('Output', 'spectral_output', self.get_spectral_output)
+                self.root._add_to_history(*history_args, True)
+                assert isinstance(binned_spectra, bool), 'binned_spectra must be bool'
+                if not binned_spectra:
+                    if 'binned_cosp_dir' not in self.root.Spectral.get_calculation():
+                        warnings.warn('WARNING: you should not set binned_spectra to False when binned cospectra are not available for this dataset. Either set binned_spectra to True or point eddypro to a previous set of spectral data by running Spectral.set_calculation the the binned_cosp_dir argument')
+                assert isinstance(binned_ogives, bool), 'binned_ogives must be bool'
+                assert isinstance(ensemble_spectra, bool), 'ensemble_spectra must be bool'
+                assert isinstance(ensemble_cospectra, bool), 'ensemble_cospectra must be bool'
+                assert or_isinstance(full_spectra, str, Sequence), 'full_spectra must be sequence of str or str'
+                if isinstance(full_spectra, str):
+                    assert full_spectra in ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'all', 'none'], "if full_spectra is str, it must be one of 'u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'all', 'none'"
+                    full_spectra = [full_spectra]
+                if isinstance(full_spectra, Sequence):
+                    for v in full_spectra:
+                        assert v in ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4'], "if full_spectra is a sequence, it must be a sequence of 'u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', or 'gas4'"
+                assert or_isinstance(full_spectra, str, Sequence), 'full_spectra must be sequence of str or str'
+                if isinstance(full_cospectra, str):
+                    assert full_cospectra in ['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4', 'all', 'none'], "if full_cospectra is str, it must be one of 'w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4', 'all', 'none'"
+                    full_cospectra = [full_cospectra]
+                if isinstance(full_cospectra, Sequence):
+                    for v in full_cospectra:
+                        assert v in ['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4'], "if full_cospectra is a sequence, it must be a sequence of 'w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', or 'w/gas4'"
+                if 'w/ts' not in full_cospectra:
+                    if 'fratini_kwargs' in self.root.Spectral.get_hf_correction():
+                        if 'full_wts_dir' not in self.root.Spectral.get_hf_correction()['fratini_kwargs']:
+                            warnings.warn("WARNING: when using the Fratini method for high-frequency spectral corrections without available w/Ts spectra, you should include 'w/ts' in the list of full-length cospectral outputs. Either add 'w/ts' to the full_cospectra argument, or run Spectral.set_hf_correction() with full_wts_dir in fratini_kwargs")
+                
+                self.root.set('RawProcess_Settings', 'out_bin_sp', str(int(binned_spectra)))
+                self.root.set('RawProcess_Settings', 'out_bin_og', str(int(binned_ogives)))
+                self.root.set('Project', 'out_mean_spec', str(int(ensemble_spectra)))
+                self.root.set('Project', 'out_mean_cosp', str(int(ensemble_cospectra)))
+
+                all_spectra = ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4']
+                if 'none' in full_spectra:
+                    zero_sp = all_spectra
+                    one_sp = []
+                elif 'all' in full_spectra:
+                    zero_sp = []
+                    one_sp = all_spectra
+                else:
+                    zero_sp = list(set(all_spectra).difference(full_spectra))
+                    one_sp = full_spectra
+                for s in zero_sp:
+                    if s == 'gas4': s = 'n2o'
+                    self.root.set('RawProcess_Settings', f'out_full_sp_{s}', '0')
+                for s in one_sp:
+                    if s == 'gas4': s = 'n2o'
+                    self.root.set('RawProcess_Settings', f'out_full_sp_{s}', '1')
+                
+                all_cospectra = ['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4']
+                if 'none' in full_cospectra:
+                    zero_sp = all_cospectra
+                    one_sp = []
+                elif 'all' in full_cospectra:
+                    zero_sp = []
+                    one_sp = all_cospectra
+                else:
+                    zero_sp = list(set(all_cospectra).difference(full_cospectra))
+                    one_sp = full_cospectra
+                for s in zero_sp:
+                    if s == 'w/gas4': s = 'n2o'
+                    self.root.set('RawProcess_Settings', f'out_full_cosp_w_{s[2:]}', '0')
+                for s in one_sp:
+                    if s == 'w/gas4': s = 'n2o'
+                    self.root.set('RawProcess_Settings', f'out_full_cosp_w_{s[2:]}', '1')
+                
+                self.root._add_to_history(*history_args)
+                return
+            def get_spectral_output(self):
+                out = dict()
+                out['binned_spectra'] = bool(int(self.root.get('RawProcess_Settings', 'out_bin_sp')))
+                out['binned_ogives'] = bool(int(self.root.get('RawProcess_Settings', 'out_bin_og')))
+                out['ensemble_spectra'] = bool(int(self.root.get('Project', 'out_mean_spec')))
+                out['ensemble_cospectra'] = bool(int(self.root.get('Project', 'out_mean_cosp')))
+
+                full_spectra = []
+                for s in ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'n2o']:
+                    if int(self.root.get('RawProcess_Settings', f'out_full_sp_{s}')):
+                        if s == 'n2o': s = 'gas4'
+                        full_spectra.append(s)
+                if len(full_spectra) == 0:
+                    full_spectra = 'none'
+                elif len(full_spectra) == 8:
+                    full_spectra = 'all'
+                out['full_spectra'] = full_spectra
+
+                full_cospectra = []
+                for s in ['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/n2o']:
+                    if int(self.root.get('RawProcess_Settings', f'out_full_cosp_w_{s[2:]}')):
+                        if s == 'w/n2o': s = 'w/gas4'
+                        full_cospectra.append(s)
+                if len(full_cospectra) == 0:
+                    full_cospectra = 'none'
+                elif len(full_cospectra) == 8:
+                    full_cospectra = 'all'
+                out['full_cospectra'] = full_cospectra
+
+                return out
+            
+            def set_chain_of_custody(
                 self,
                 unprocessed: Literal['stats', 'timeseries', 'both', 'none'] = 'stats',
                 despiked: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
@@ -3188,11 +3356,79 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ----------
                 for each parameter other than variables: one of 'stats', 'timeseries', 'both', or 'none' specifying whether to output just the statistics, or the full timeseries for that level of processing.
                 variables: sequence of strings indicating which timeseries to output data for when timeseries is selected"""
-                pass
-            def get_chain_of_custody(self):
-                pass
-            
+                history_args = ('Output', 'chain_of_custody', self.get_chain_of_custody)
+                self.root._add_to_history(*history_args, True)
 
+                for v in [unprocessed, despiked, crosswind_corrected, aoa_corrected, tilt_corrected, timelag_corrected, detrended]:
+                    assert v in ['stats', 'timeseries', 'both', 'none'], "unprocessed, despiked, crosswind_corrected, aoa_corrected, tilt_corrected, timelag_corrected, and detrended must be one of 'stats', 'timeseries', 'both', 'none'"
+                assert or_isinstance(variables, str, Sequence)
+                if isinstance(variables, Sequence):
+                    for v in variables:
+                        assert v in ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa'], "If variables is a sequence, it can only contain 'u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa'"
+                if isinstance(variables, str):
+                    assert variables in ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa', 'all', 'none'], "If variables is a string, it must be one of 'u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa', 'all', 'none'"
+                    variables = [variables]
+
+                for i, v in enumerate([unprocessed, despiked, crosswind_corrected, aoa_corrected, tilt_corrected, timelag_corrected, detrended]):
+                    level = i + 1
+                    match v:
+                        case 'stats':
+                            self.root.set('RawProcess_Settings', f'out_st_{level}', '1')
+                            self.root.set('RawProcess_Settings', f'out_raw_{level}', '0')
+                        case 'timeseries':
+                            self.root.set('RawProcess_Settings', f'out_st_{level}', '0')
+                            self.root.set('RawProcess_Settings', f'out_raw_{level}', '1')
+                        case 'both':
+                            self.root.set('RawProcess_Settings', f'out_st_{level}', '1')
+                            self.root.set('RawProcess_Settings', f'out_raw_{level}', '1')
+                        case 'none':
+                            self.root.set('RawProcess_Settings', f'out_st_{level}', '0')
+                            self.root.set('RawProcess_Settings', f'out_raw_{level}', '0')
+                
+                all_vars = set(['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa'])
+                if 'all' in variables:
+                    zero_vars = set()
+                    one_vars = all_vars
+                elif 'none' in variables:
+                    zero_vars = all_vars
+                    one_vars = set()
+                else:
+                    one_vars = set(variables)
+                    zero_vars = all_vars.difference(one_vars)
+                for v in zero_vars:
+                    if v == 'pa': v = 'p_air'
+                    elif v == 'ta': v = 't_air'
+                    self.root.set('RawProcess_Settings', f'out_raw_{v}', '0')
+                for v in one_vars:
+                    if v == 'pa': v = 'p_air'
+                    elif v == 'ta': v = 't_air'
+                    self.root.set('RawProcess_Settings', f'out_raw_{v}', '1')    
+
+                self.root._add_to_history(*history_args)
+                return
+            def get_chain_of_custody(self):
+                out = dict()
+
+                for i, k in enumerate(['unprocessed', 'despiked', 'crosswind_corrected', 'aoa_corrected', 'tilt_corrected', 'timelag_corrected', 'detrended']):
+                    level = i + 1
+                    match (self.root.get('RawProcess_Settings', f'out_st_{level}'), self.root.get('RawProcess_Settings', f'out_raw_{level}')):
+                        case '1', '0': out[k] = 'stats'
+                        case '0', '1': out[k] = 'timeseries'
+                        case '0', '0': out[k] = 'none'
+                        case '1', '1': out[k] = 'both'
+                
+                variables = []
+                for k in ['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 't_air', 'p_air']:
+                    if int(self.root.get('RawProcess_Settings', f'out_raw_{kv}')):
+                        if k == 't_air': k = 'ta'
+                        elif k == 'p_air': k = 'pa'
+                        variables.append(k)
+                if len(variables) == 0:
+                    variables = 'none'
+                elif len(variables) == 10:
+                    variables = 'all'
+                out['variables'] = variables
+                return out
 
             
 if __name__ == '__main__':
