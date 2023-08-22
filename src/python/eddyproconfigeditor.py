@@ -16,6 +16,12 @@ from time import perf_counter as timer
 
 from pandas import date_range, Timedelta, DataFrame
 
+from util import (
+    or_isinstance,
+    in_range,
+    compare_configs,
+    compute_date_overlap,)
+
 """
 TODO
 Settings to add
@@ -101,109 +107,6 @@ TODO: edge cases
     * when writing output, check that dates are consistent:
         * if time-dependent settings are selected, such a start='project' for 
 """
-
-
-def or_isinstance(object, *types):
-    """helper function to chain together multiple isinstance arguments
-    e.g. or_isinstance(a, float, int) does the same as (isinstance(a, float) or isinstance(a, int))"""
-    for t in types:
-        if isinstance(object, t):
-            return True
-    return False
-
-def in_range(v, interval):
-    """helper function to determine if a value is in some interval.
-    intervals are specified using a string:
-    (a, b) for an open interval
-    [a, b] for a closed interval
-    [a, b) for a right-open interval
-    etc.
-
-    use inf as one of the interval bounds to specify no bound in that direction, but I don't know why you wouldn't just use > at that point"""
-
-    # remove whitespace
-    interval = interval.strip()
-
-    # extract the boundary conditions
-    lower_bc = interval[0]
-    upper_bc = interval[-1]
-
-    # extract the bounds
-    interval = [float(bound.strip())
-                for bound in interval[1:-1].strip().split(',')]
-    lower, upper = interval
-    if lower == float('inf'):
-        lower *= -1
-
-    bounds_satisfied = 0
-    if lower_bc == '(':
-        bounds_satisfied += (lower < v)
-    else:
-        bounds_satisfied += (lower <= v)
-
-    if upper_bc == ')':
-        bounds_satisfied += (v < upper)
-    else:
-        bounds_satisfied += (v <= upper)
-
-    return bounds_satisfied == 2
-
-def compare_configs(df1: DataFrame, df2: DataFrame) -> DataFrame:
-    """compare differences between two configs
-    
-    Parameters
-    ----------
-    df1, df2: pandas.DataFrame objects output by EddyproConfigEditor.to_pandas()
-
-    Returns
-    -------
-    pandas.DataFrame containing lines that differed between df1 and df2
-    """
-    df1_new = df1.loc[df1['Value'] != df2['Value'],
-                      ['Section', 'Option', 'Value']]
-    df2_new = df2.loc[df1['Value'] != df2['Value'],
-                      ['Section', 'Option', 'Value']]
-    name1 = df1['Name'].values[0]
-    name2 = df2['Name'].values[0]
-    df_compare = (df1_new .merge(df2_new, on=['Section', 'Option'], suffixes=[
-        '_' + name1, '_' + name2]) .sort_values(['Section', 'Option']))
-    return df_compare
-
-def compute_date_overlap(
-        interval_1: Sequence[str, str] | Sequence[datetime.datetime, datetime.datetime], 
-        interval_2: Sequence[str, str] | Sequence[datetime.datetime, datetime.datetime]) -> datetime.timedelta:
-    """given two time intervals of strings or datetime objects, compute their overlap and report them as a timdelta object
-    Strings must be of the form YYYY-mm-dd HH:MM"""
-
-    # assure inputs conform to standards
-    assert isinstance(interval_1, Sequence), 'intervals must be sequences of strings or datetimes'
-    assert isinstance(interval_2, Sequence), 'intervals must be sequences of strings or datetimes'
-    assert len(interval_1) == 2, 'intervals must be length 2'
-    assert len(interval_2) == 2, 'intervals must be length 2'
-    interval_1 = list(interval_1)
-    interval_2 = list(interval_2)
-    for i in range(2):
-        assert or_isinstance(interval_1[i], str, datetime.datetime), 'inputs must be strings of format YYYY-mm-dd HH:MM or datetime.datetime objects'
-        assert or_isinstance(interval_2[i], str, datetime.datetime), 'inputs must be strings of format YYYY-mm-dd HH:MM or datetime.datetime objects'
-        if isinstance(interval_1[i], str):
-            assert len(interval_1[i].strip()) == 16, 'inputs must be strings of format YYYY-mm-dd HH:MM'
-        if isinstance(interval_2[i], str):
-            assert len(interval_2[i].strip()) == 16, 'inputs must be strings of format YYYY-mm-dd HH:MM'
-    
-    # convert to datetime objects
-    for i in range(2):
-        if isinstance(interval_1[i], str):
-            interval_1[i] = datetime.datetime.strptime(interval_1[i].strip(), r'%Y-%m-%d %H:%M')
-        if isinstance(interval_2[i], str):
-            interval_2[i] = datetime.datetime.strptime(interval_2[i].strip(), r'%Y-%m-%d %H:%M')
-
-    # compute overlap
-    start = max(interval_1[0], interval_2[0])
-    end = min(interval_1[1], interval_2[1])
-    overlap = end - start
-
-    return overlap
-
 
 class EddyproConfigEditor(configparser.ConfigParser):
     '''
@@ -322,7 +225,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         self._num_changes = 0
 
         self.Basic = self._Basic(self)
-        self.Advanced = self._Advanced(self)
+        self.Adv = self._Adv(self)
 
     # ---------------utilities-----------------------
     def to_eddypro(
@@ -345,31 +248,74 @@ class EddyproConfigEditor(configparser.ConfigParser):
         such as planar fit settings, time lag auto-optimization settings, spectra calculation settings.
         """
 
-        # check that the time window is valid
+        # check that the time window is valid for the project
         start, end = self.Basic.get_project_date_range().values()
-        if (start - end).days <= 0:
-            warnings.warn(f'WARNING: project date range invalid ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")})')
-        # check that the planar fit window is valid if the user specified manual planar fit.
-
+        if not self.check_dates((start, end), 'project'):
+            warnings.warn(f'project date range invalid ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")})')
+        
+        # check that the planar fit window is valid
+        # if the user specified manual planar fit, there are two options
+        # 1) if the user specified to use a custom date range, subset will be 1
+        # 2) if the user did not specify a custom date range, subset will be 0 and the pf dates will be the project dates.
         pf_manual_enabled = (
             bool(int(self.get('RawProcess_TiltCorrection_Settings', 'pf_mode')))  # pf mode 1 is manual config
-            and (int(self.get('RawProcess_Settings', 'rot_meth')) in [3, 4]))  # 3 and 4 are planar fits
+            and self.get('RawProcess_Settings', 'rot_meth') in ['3', '4'])  # 3 and 4 are planar fits
         if pf_manual_enabled:
-            pf_start_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
-            pf_start_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_time')
-            # if pf_start_time == '': pf_start_time = '00:00'
-            pf_start = datetime.datetime.strptime(pf_start_date + pf_start_time, r'%Y-%m-%d%H:%M')
-            pf_end_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
-            pf_end_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_time')
-            pf_end = datetime.datetime.strptime(pf_end_date + pf_end_time,r'%Y-%m-%d%H:%M')
+            subset = bool(int(self.get('RawProcess_TiltCorrection_Settings', 'pf_subset')))
+            if subset:
+                pf_start_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
+                pf_start_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_time')
+                pf_start = datetime.datetime.strptime(pf_start_date + pf_start_time, r'%Y-%m-%d%H:%M')
+                pf_end_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
+                pf_end_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_time')
+                pf_end = datetime.datetime.strptime(pf_end_date + pf_end_time,r'%Y-%m-%d%H:%M')
+            else:
+                pf_start = start
+                pf_end = end
+
             overlap = self.check_dates((pf_start, pf_end), 'project', min_overlap=7)
             if not overlap:
-                warnings.warn(f'WARNING: planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
+                warnings.warn(f'planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
         
-        # check time opt
-
+        # check that the time opt window is valid
+        to_manual_enabled = (
+            bool(int(self.get('RawProcess_TimelagOptimization_Settings', 'to_mode')))
+            and self.get('RawProcess_Settings', 'tlag_meth') == '4')
+        if to_manual_enabled:
+            subset = bool(int(self.get('RawProcess_TimelagOptimization_Settings', 'to_subset')))
+            if subset:
+                to_start_date = self.get('RawProcess_TimelagOptimization_Settings', 'to_start_date')
+                to_start_time = self.get('RawProcess_TimelagOptimization_Settings', 'to_start_time')
+                to_start = datetime.datetime.strptime(to_start_date + to_start_time, r'%Y-%m-%d%H:%M')
+                to_end_date = self.get('RawProcess_TimelagOptimization_Settings', 'to_end_date')
+                to_end_time = self.get('RawProcess_TimelagOptimization_Settings', 'to_end_time')
+                to_end = datetime.datetime.strptime(to_end_date + to_end_time,r'%Y-%m-%d%H:%M')
+            else:
+                to_start = start
+                to_end = end
+            overlap = self.check_dates((to_start, to_end), 'project', min_overlap=30)
+            if not overlap:
+                warnings.warn(f'timelag auto opt window ({to_start.strftime(r"%Y-%m-%d %H:%M")} -> {to_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.')
         
-
+        # check that the spectral analysis window is valid
+        # works the same as timelag and planarfit, except we just check to see if binned spectra are available
+        sa_manual_enabled = bool(1 - int(self.get('Project', 'bin_sp_avail')))
+        if sa_manual_enabled:
+            subset = bool(int(self.get('FluxCorrection_SpectralAnalysis_General', 'sa_subset')))
+            if subset:
+                sa_start_date = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_date')
+                sa_start_time = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_time')
+                sa_start = datetime.datetime.strptime(sa_start_date + sa_start_time, r'%Y-%m-%d%H:%M')
+                sa_end_date = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_date')
+                sa_end_time = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_time')
+                sa_end = datetime.datetime.strptime(sa_end_date + sa_end_time,r'%Y-%m-%d%H:%M')
+            else:
+                sa_start = start
+                sa_end = end
+            overlap = self.check_dates((sa_start, sa_end), 'project', min_overlap=30)
+            if not overlap:
+                warnings.warn(f'spectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.')
+        
         self.set('Project', 'file_name', str(ini_file))
         if out_path != 'keep':
             self.set('Project', 'out_path', str(out_path))
@@ -441,7 +387,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             start,
             end - Timedelta(job_size),
             freq=job_size)
-        if len(job_starts) <= 1: warnings.warn(f"WARNING: job size too long. Submitting {len(job_starts)} jobs")
+        if len(job_starts) <= 1: warnings.warn(f"job size too long. Submitting {len(job_starts)} jobs")
         # dates are inclusive, so subtract 30min for file duration
         job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
         # job_start_dates = job_starts.strftime(date_format=r'%Y-%m-%d')
@@ -748,7 +694,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ):
             """format yyyy-mm-dd HH:MM for strings"""
             if end < start:
-                warnings.warn(f'WARNING: Selected processing period is invalid: {str(start)} -> {str(end)}')
+                warnings.warn(f'Selected processing period is invalid: {str(start)} -> {str(end)}')
             self.set_project_start_date(start)
             self.set_project_end_date(end)
         def get_project_date_range(self) -> dict:
@@ -759,7 +705,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         def set_missing_samples_allowance(self, pct: int):
             # pct: value from 0 to 40%
-            assert pct >= 0 and pct <= 40
+            assert pct >= 0 and pct <= 40, 'pct must be between 0 and 40'
 
             history_args = ('Basic', 'missing_samples_allowance', self.get_missing_samples_allowance)
             self.root._add_to_history(*history_args, True)
@@ -855,16 +801,16 @@ class EddyproConfigEditor(configparser.ConfigParser):
             return self.root.get('Project', 'project_id')
 
     # --------------------Advanced Settings Page-----------------------
-    class _Advanced:
+    class _Adv:
         def __init__(self, root):
             self.root = root
-            self.Processing = self._Processing(self)
-            self.Statistical = self._Statistical(self)
-            self.Spectral = self._Spectral(self)
-            self.Output = self._Output(self)
+            self.Proc = self._Proc(self)
+            self.Stat = self._Stat(self)
+            self.Spec = self._Spec(self)
+            self.Out = self._Out(self)
 
         # --------Processing Options---------
-        class _Processing:
+        class _Proc:
             def __init__(self, outer):
                 self.outer = outer
                 self.root = outer.root
@@ -914,8 +860,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 * w_max: 0.5-10
                 * u_min: 0.001 - 10
                 * num_per_sector_min: 1-10_000
-                north_offset: -180 - +180
-                sectors: 1-12 sectors, sectors must total 360 degrees, each sector between 0.1 and 360 degrees
+                * north_offset: -180 - +180
+                * sectors: 1-12 sectors, sectors must total 360 degrees, each sector between 0.1 and 360 degrees
 
                 Returns
                 -------
@@ -939,6 +885,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
                     if end == 'project':
                         assert start == 'project', 'if one of start, end is "project", the other must be as well.'
+                assert isinstance(sectors, Sequence), 'sectors must be a sequence'
                 assert len(sectors) <= 12, f'was given {len(sectors)} sectors. No more than 12 are permitted'
                 total_width = 0
                 for i, s in enumerate(sectors):
@@ -952,56 +899,49 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 # process dates
                 # if user specifies "project," we choose start and end dates, but they don't end up mattering because we set pf_subset = 0
-                pf_subset = 1
+                settings_dict = dict()
                 if start == 'project':
-                    pf_start = self.root.Basic.get_project_start_date()
-                    pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
-                    pf_subset = 0
-                elif isinstance(start, datetime.datetime):
-                    pf_start = start
-                    pf_start_date, pf_start_time = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    settings_dict['pf_subset'] = 0
+                    pf_start, pf_end = self.root.Basic.get_project_date_range().values()
                 else:
-                    pf_start = start
-                    pf_start_date, pf_start_time = pf_start.split(' ')
-                if end == 'project':
-                    pf_end = self.root.Basic.get_project_end_date()
-                    pf_end_date, pf_end_time = pf_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
-                elif isinstance(end, datetime.datetime):
-                    pf_end = end
-                    pf_end_date, pf_end_time = pf_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
-                else:
-                    pf_end = end
-                    pf_end_date, pf_end_time = pf_end.split(' ')
+                    settings_dict['pf_subset'] = 1
+                    if isinstance(start, datetime.datetime):
+                        pf_start = start
+                        settings_dict['pf_start_date'], settings_dict['pf_start_time'] = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    else:
+                        pf_start = start
+                        settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_start.split(' ')
+
+                    if isinstance(end, datetime.datetime):
+                        pf_end = end
+                        settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    else:
+                        pf_end = end
+                        settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_end.split(' ')
+                    
                 # check that the date range is valid for this project
-                overlap = self.root.check_dates(interval=(pf_start, pf_end), reference='project', min_overlap=14).days
-                if overlap < 14:
-                    warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between planar fit time window ({pf_start} -> {pf_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 14 days are required')
+                overlap = self.root.check_dates(interval=(pf_start, pf_end), reference='project', min_overlap=14)
+                if not overlap:
+                    warnings.warn(f'insufficient overlap ({overlap} days) between planar fit time window ({pf_start} -> {pf_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 14 days are required')
                 
                 # fix method
                 fix_dict = dict(CW=0, CCW=1, double_rotations=2)
                 if isinstance(fix_method, str):
                     fix_method = fix_dict[fix_method]
 
-                settings_dict = dict(
-                    pf_start_date=pf_start_date,
-                    pf_start_time=pf_start_time,
-                    pf_end_date=pf_end_date,
-                    pf_end_time=pf_end_time,
-                    pf_u_min=u_min,
-                    pf_w_max=w_max,
-                    pf_min_num_per_sec=int(num_per_sector_min),
-                    pf_fix=fix_method,
-                    pf_north_offset=north_offset,
-                    pf_subset=pf_subset
-                )
+                
+                settings_dict['pf_u_min'] = u_min
+                settings_dict['pf_w_max'] = w_max
+                settings_dict['pf_min_num_per_sec'] = int(num_per_sector_min)
+                settings_dict['pf_fix'] = fix_method
+                settings_dict['pf_north_offset'] = north_offset
 
                 # sectors
-                if sectors is not None:
-                    for i, sector in enumerate(sectors):
-                        exclude, width = sector
-                        n = i + 1
-                        settings_dict[f'pf_sector_{n}_exclude'] = int(exclude)
-                        settings_dict[f'pf_sector_{n}_width'] = str(width)
+                for i, sector in enumerate(sectors):
+                    exclude, width = sector
+                    n = i + 1
+                    settings_dict[f'pf_sector_{n}_exclude'] = int(exclude)
+                    settings_dict[f'pf_sector_{n}_width'] = str(width)
                                                                     
                 return settings_dict
             def set_axis_rotations_for_tilt_correction(
@@ -1028,13 +968,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. defaults to a single active sector of 360 degrees, [(False, 360)]
                 """
                 history_args = ('Advanced-Processing', 'axis_rotations_for_tilt_correction', self.get_axis_rotations_for_tilt_correction)
-                self.root._add_to_history(history_args, True)
+                self.root._add_to_history(*history_args, True)
 
                 assert method in ['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb', 0, 1, 2, 3, 4], 'method must be one of none (0), double_rotations (1), triple_rotations (2), planar_fit (3), or planar_fit_nvb (4)'
                 if method in ['planar_fit', 'planar_fit_nvb', 3, 4]:
                     assert bool(pf_file) != bool(configure_planar_fit_settings_kwargs), 'If method is a planar-fit type, exactly one of pf_file or pf_settings should be specified.'
                 elif pf_file is not None or configure_planar_fit_settings_kwargs is not None:
-                    warnings.warn(f'WARNING: planar fit settings arguments will be ignored when method is not a non-planar-fit type. Received method={method}')
+                    warnings.warn(f'planar fit settings arguments will be ignored when method is not a non-planar-fit type. Received method={method}')
                 method_dict = {
                     'none': 0,
                     'double_rotations': 1,
@@ -1066,7 +1006,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             self.root.set(
                                 'RawProcess_TiltCorrection_Settings', option, str(value))
                 
-                self.root._add_to_history(history_args)
+                self.root._add_to_history(*history_args)
             def get_axis_rotations_for_tilt_correction(self) -> dict:
                 """
                 extracts axis rotation settings from the config file.
@@ -1160,12 +1100,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     pf_file=pf_file,
                     configure_planar_fit_settings_kwargs=configure_planar_fit_settings_kwargs)
 
-            def set_turbulent_fluctuations(self,
-                                           detrend_method: Literal['block',
-                                                           'detrend',
-                                                           'running_mean',
-                                                           'exponential_running_mean'] | int = 'block',
-                                           time_constant: float | None = None):
+            def set_turbulent_fluctuations(
+                self,
+                detrend_method: Literal['block',
+                                'linear',
+                                'running_mean',
+                                'exponential_running_mean'] | int = 'block',
+                time_constant: float | Literal['averaging_interval'] | None = None):
                 '''
                 Parameters
                 ----------
@@ -1173,7 +1114,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 time_constant: if detrend, running_mean, or exponential_running_mean are selected, provide a time constant in minutes. Default None. If None and linear_detrend is selected, set time_constant to 0 to indicate to eddypro to use the flux averaging interval as the time constant. If a running mean method is selected and time_constant is None, set time_constant to 250s.
                     detrend_method              default time_constant
                     block                       0 (does nothing)
-                    detrend                     0 (flux averaging interval)
+                    linear                     0 (flux averaging interval)
                     running_mean                250 (seconds)
                     exponential_running_mean    250 (seconds)
 
@@ -1183,14 +1124,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 history_args = ('Advanced-Processing', 'turbulent_fluctuations', self.get_turbulent_fluctuations)
                 self.root._add_to_history(*history_args, True)
 
-                assert detrend_method in ['block', 'detrend', 'running_mean', 'exponential_running_mean', 0, 1, 2, 3], "detrend_method must be one of 'block' (0), 'detrend (1), running_mean (2), or exponential_running_mean (3)"
-                assert or_isinstance(time_constant, int, float) or time_constant == 'averaging_interval', 'time constant must be numeric'
-                assert in_range(time_constant, '[0, 5000.]'), 'time constant must be between 0 and 5000'
+                assert detrend_method in ['block', 'linear', 'running_mean', 'exponential_running_mean', 0, 1, 2, 3], "detrend_method must be one of 'block' (0), 'linear' (1), running_mean (2), or exponential_running_mean (3)"
+                if time_constant is not None:
+                    assert or_isinstance(time_constant, int, float) or time_constant == 'averaging_interval', 'time constant must be numeric, "averaging_interval" or None'
+                    assert in_range(time_constant, '[0, 5000.]'), 'time constant must be between 0 and 5000'
 
                 # choose method
                 method_dict = {
                     'block': 0,
-                    'detrend': 1,
+                    'linear': 1,
                     'running_mean': 2,
                     'exponential_running_mean': 3}
                 if isinstance(detrend_method, str):
@@ -1201,22 +1143,26 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 if time_constant is None:
                     # default for linear detrend is flux averaging interval
                     time_constant = default_time_constants[detrend_method]
+                elif time_constant == 'averaging_interval':
+                    time_constant = 0
                 self.root.set(
                     'RawProcess_Settings',
                     'detrend_meth',
                     str(detrend_method))
-                self.root.set(
-                    'RawProcess_Settings',
-                    'timeconst',
-                    time_constant*60)
+                if detrend_method != 0:
+                    self.root.set(
+                        'RawProcess_Settings',
+                        'timeconst',
+                        str(time_constant*60))
 
                 self.root._add_to_history(*history_args)
             def get_turbulent_fluctuations(self) -> dict:
                 out = dict()
 
-                methods = ['block', 'detrend', 'running_mean', 'exponential_running_mean']
+                methods = ['block', 'linear', 'running_mean', 'exponential_running_mean']
                 out['detrend_method'] = methods[int(self.root.get('RawProcess_Settings', 'detrend_meth'))]
-                out['time_constant'] = float(self.root.get('RawProcess_Settings', 'timeconst'))
+                if out['detrend_method'] != 'block':
+                    out['time_constant'] = float(self.root.get('RawProcess_Settings', 'timeconst'))
 
                 return out
 
@@ -1303,9 +1249,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     to_end = end
                     to_end_date, to_end_time = to_end.split(' ')
                 # check that the date range is valid for this project
-                overlap = self.root.check_dates(interval=(to_start, to_end), reference='project', min_overlap=14).days
-                if overlap < 30:
-                    warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between time lag optimization time window ({to_start} -> {to_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 30 days are required')
+                overlap = self.root.check_dates(interval=(to_start, to_end), reference='project', min_overlap=30)
+                if not overlap:
+                    warnings.warn(f'insufficient overlap ({overlap} days) between time lag optimization time window ({to_start} -> {to_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 30 days are required')
                 
                 # lag settings default to "automatic detection" for the value -1000.1
                 settings_with_special_defaults = [
@@ -1349,7 +1295,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                                                           'constant',
                                                           'covariance_maximization_with_default',
                                                           'covariance_maximization',
-                                                          'automatic_optimization'] | int = 2,
+                                                          'automatic_optimization'] | int = 'covariance_maximization_with_default',
                                           autoopt_file: PathLike[str] | str | None = None,
                                           configure_TimelagAutoOpt_kwargs: dict | None = None):
                 """
@@ -1363,10 +1309,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # check inputs
                 if isinstance(method, str):
                     assert method in ['none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization'], "method must be one of None, 'none', 'constant', 'covariance_maximization_with_default', 'covariance_maximization', 'automatic_optimization', or 0, 1, 2, 3, or 4."
-                    method = method_dict[method]
-                assert method in range(5), 'method must be one of None, constant, covariance_maximization_with_default, covariance_maximization, automatic_optimization, or 0, 1, 2, 3, or 4.'
-                if method == 4:
-                    assert bool(autoopt_file) != bool(configure_TimelagAutoOpt_kwargs), 'If method is automatic_optimization, exactly one of pf_file or pf_settings should be specified.'
+                else: 
+                    assert method in range(5), 'method must be one of None, constant, covariance_maximization_with_default, covariance_maximization, automatic_optimization, or 0, 1, 2, 3, or 4.'
+                if method == 4 or method == 'automatic_optimization':
+                    assert bool(autoopt_file) != bool(configure_TimelagAutoOpt_kwargs), 'If method is automatic_optimization, exactly one of autoopt_file or configure_TimelagAutoOpt_kwargs should be specified.'
                     if configure_TimelagAutoOpt_kwargs is not None:
                         assert isinstance(configure_TimelagAutoOpt_kwargs, dict), 'configure_TimelagAutoOpt_kwargs must be None or dict.'
 
@@ -1376,6 +1322,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'covariance_maximization_with_default': 2,
                     'covariance_maximization': 3,
                     'automatic_optimization': 4}
+                if isinstance(method, str):
+                    method = method_dict[method]
 
                 self.root.set('RawProcess_Settings', 'tlag_meth', str(method))
 
@@ -1490,9 +1438,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             def _set_burba_coeffs(self, name, estimation_method, coeffs):
                 """helper method called by set_compensationOfDensityFluctuations"""
                 if estimation_method == 'multiple':
-                    options = [f'm_{name}_{i}' for i in [1, 2, 3, 4]]
+                    options = [f'm_{name}{i}' for i in [1, 2, 3, 4]]
                     assert len(
-                        coeffs) == 2, 'Multiple regression coefficients must be a sequence of length four, representing (offset, Ta_gain, Rg_gain, U_gain)'
+                        coeffs) == 4, 'Multiple regression coefficients must be a sequence of length four, representing (offset, Ta_gain, Rg_gain, U_gain)'
                     for option, value in zip(options, coeffs):
                         self.root.set(
                             'RawProcess_Settings', option, str(value))
@@ -1503,12 +1451,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     for option, value in zip(options, coeffs):
                         self.root.set(
                             'RawProcess_Settings', option, str(value))
-
             def set_compensation_of_density_fluctuations(
                     self,
                     enable: bool = True,
-                    burba_correction: bool = False,
-                    estimation_method: Literal['simple', 'multiple'] | None = None,
+                    
+                    burba_method: Literal['simple', 'multiple'] | None = None,
                     day_bot: Sequence | Literal['revert'] | None = None,
                     day_top: Sequence | Literal['revert'] | None = None,
                     day_spar: Sequence | Literal['revert'] | None = None,
@@ -1522,7 +1469,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 enable: If true, correct for density fluctuations with the WPL term (default)
                 burba_correction: If true, add instrument sensible heat components. LI-7500 only. Default False.
                 estimation_method: one of 'simple' or 'multiple'. Whether to use simple linear regression or Multiple linear regression. if burba_correction is enabled, this argument cannot be None (default)
-                day/night_bot/top/spar: Either (a) 'default' (default) (b) 'keep', or (c) a sequence of regression coefficients for the burba correction for the temperature of the bottom, top, and spar of the LI7500.
+                day/night_bot/top/spar: Either (a) 'revert' (revert to defaults) (b) None (default, keep current settings), or (c) a sequence of regression coefficients for the burba correction for the temperature of the bottom, top, and spar of the LI7500.
                     If 'simple' estimation was selected, then this is a sequence of length two, representing (gain, offset) for the equation
                         T_instrument = gain*Ta + offset
                     If 'multiple' estimation was selected, then this is a sequence of length 4, repressinting (offset, Ta_coeff, Rg_coeff, U_coeff) for the equation
@@ -1537,13 +1484,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.root._add_to_history(*history_args, True)
                 if not enable:
                     self.root.set('Project', 'wpl_meth', '0')
-                    if burba_correction:
+                    if burba_method is not None:
                         warnings.warn(
-                            'WARNING: burba_correction has no effect when density fluctuation compensation is disabled')
+                            'burba correction has no effect when density fluctuation compensation is disabled')
                 else:
                     self.root.set('Project', 'wpl_meth', '1')
 
-                if not burba_correction:
+                if burba_method is None:
                     self.root.set('RawProcess_Settings', 'bu_corr', '0')
                     if (
                         isinstance(day_bot, Sequence)
@@ -1555,13 +1502,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         or not enable
                     ):
                         warnings.warn(
-                            'WARNING: burba regression coefficients have no effect when burba correction is disabled or density corrections are disabled.')
+                            'burba regression coefficients have no effect when burba correction is disabled or density corrections are disabled.')
                 else:
-                    assert estimation_method in [
+                    assert burba_method in [
                         'simple', 'multiple'], 'estimation method must be one of "simple", "multiple"'
                     self.root.set('RawProcess_Settings', 'bu_corr', '1')
 
-                if estimation_method == 'simple':
+                if burba_method == 'simple':
                     self.root.set('RawProcess_Settings', 'bu_multi', '0')
                     # daytime
                     if day_bot == 'revert' or set_all == 'revert':
@@ -1616,7 +1563,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         self._set_burba_coeffs(
                             'night_spar', 'simple', night_spar)
 
-                elif estimation_method == 'multiple':
+                elif burba_method == 'multiple':
                     self.root.set('RawProcess_Settings', 'bu_multi', '1')
                     # daytime
                     if day_bot == 'revert' or set_all == 'revert':
@@ -1678,7 +1625,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 out['enable'] = bool(int(self.root.get('Project', 'wpl_meth')))
                 if out['enable']:
                     out['burba_correction'] = bool(
-                        int(self.get('RawProcess_Settings', 'bu_corr')))
+                        int(self.root.get('RawProcess_Settings', 'bu_corr')))
 
                     if out['burba_correction']:
                         kwargs = [
@@ -1696,7 +1643,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             for k in kwargs:
                                 out[k] = tuple(
                                     float(
-                                        self.root.get('RawProcess_Settings', f'm_{k}_{i}')) for i in range(1, 5))
+                                        self.root.get('RawProcess_Settings', f'm_{k}{i}')) for i in range(1, 5))
                         else:
                             for k in kwargs:
                                 out[k] = tuple(
@@ -1706,7 +1653,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 return out
          # --------Statistical Analysis---------
 
-        class _Statistical:
+        class _Stat:
             def __init__(self, outer):
                 self.root = outer.root
                 self.outer = outer
@@ -1777,10 +1724,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     str(accepted))
                 if linterp:
                     self.root.set(
-                        'RawProcess_ParameterSettings', 'filter_sr', '1')
+                        'RawProcess_Settings', 'filter_sr', '1')
                 else:
                     self.root.set(
-                        'RawProcess_ParameterSettings', 'filter_sr', '0')
+                        'RawProcess_Settings', 'filter_sr', '0')
                 if use_m13:
                     return  # m13 takes no futher parameters
 
@@ -1815,7 +1762,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'RawProcess_ParameterSettings',
                         'sr_lim_hf'))
                 out_dict['linterp'] = bool(
-                    int(self.root.get('RawProcess_ParameterSettings', 'filter_sr')))
+                    int(self.root.get('RawProcess_Settings', 'filter_sr')))
                 if out_dict['method'] == 'M13':
                     return out_dict
 
@@ -2551,7 +2498,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
                 self.root._add_to_history(*history_args)
                 return
-
             def get_estimate_random_uncertainty(self):
                 out = dict()
                 methods = ['disable', 'FS01', 'ML94', 'M98']
@@ -2568,7 +2514,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 return out
 
-        class _Spectral:
+        class _Spec:
             def __init__(self, outer):
                 self.root = outer.root
                 self.outer = outer
@@ -2644,7 +2590,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # check that the date range is valid for this project
                 overlap = self.root.check_dates(interval=(sa_start, sa_end), reference='project', min_overlap=30)
                 if not overlap:
-                    warnings.warn(f'WARNING: insufficient overlap ({overlap} days) between time lag optimization time window ({sa_start} -> {sa_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 30 days are required')
+                    warnings.warn(f'insufficient overlap ({overlap} days) between time lag optimization time window ({sa_start} -> {sa_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 30 days are required')
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_date', sa_start_date)
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_time', sa_start_time)
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_date', sa_end_date)
@@ -2861,7 +2807,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     case 1, 0: out['filter_mf04'] = 'low'
                     case 1, 1: out['filter_mf04'] = 'moderate'
                     case _:
-                        warnings.warn('WARNING: found filter_mf04 to have an invalid configuration. Setting to moderate.')
+                        warnings.warn('found filter_mf04 to have an invalid configuration. Setting to moderate.')
                         out['filter_mf04'] = 'moderate'
                 return out
 
@@ -3058,33 +3004,33 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 match low_pass_method:
                     case 'none':
                         if horst_kwargs is not None or ibrom_kwargs is not None or fratini_kwargs is not None:
-                            warnings.warn('WARNING: no correction method provided. Ignoring all method-specific kwargs')
+                            warnings.warn('no correction method provided. Ignoring all method-specific kwargs')
                         self.root.set('Project', 'hf_meth', '0')
                     case 'moncrieff':
                         if horst_kwargs is not None or ibrom_kwargs is not None or fratini_kwargs is not None:
-                            warnings.warn('WARNING: moncrieff method provided. Ignoring all method-specific kwargs')
+                            warnings.warn('moncrieff method provided. Ignoring all method-specific kwargs')
                         self.root.set('Project', 'hf_meth', '1')
                     case 'horst':
                         assert isinstance(horst_kwargs, dict), 'horst_kwargs must be a dict of kwargs to pass to _configure_horst'
                         if ibrom_kwargs is not None or fratini_kwargs is not None:
-                            warnings.warn('WARNING: horst method provided. Ignoring ibrom and fratini kwargs')
+                            warnings.warn('horst method provided. Ignoring ibrom and fratini kwargs')
                         self.root.set('Project', 'hf_meth', '2')
                         settings = self._configure_horst(**horst_kwargs)
                     case 'ibrom':
                         assert isinstance(ibrom_kwargs, dict), 'ibrom_kwargs must be a dict of kwargs to pass to _configure_ibrom'
                         if ibrom_kwargs is not None or fratini_kwargs is not None:
-                            warnings.warn('WARNING: ibrom method provided. Ignoring horst and fratini kwargs')
+                            warnings.warn('ibrom method provided. Ignoring horst and fratini kwargs')
                         self.root.set('Project', 'hf_meth', '3')
                         settings = self._configure_ibrom(**ibrom_kwargs)
                     case 'fratini':
                         assert isinstance(fratini_kwargs, dict), 'fratini_kwargs must be a dict of kwargs to pass to _configure_fratini'
                         if ibrom_kwargs is not None or horst_kwargs is not None:
-                            warnings.warn('WARNING: fratini method provided. Ignoring horst and ibrom kwargs')
+                            warnings.warn('fratini method provided. Ignoring horst and ibrom kwargs')
                         self.root.set('Project', 'hf_meth', '4')
                         settings = self._configure_fratini(**fratini_kwargs)
                     case 'massman':
                         if horst_kwargs is not None or ibrom_kwargs is not None or fratini_kwargs is not None:
-                            warnings.warn('WARNING: massman method provided. Ignoring all method-specific kwargs')
+                            warnings.warn('massman method provided. Ignoring all method-specific kwargs')
                         self.root.set('Project', 'hf_meth', '5')
                     
                 if settings is not None:
@@ -3135,7 +3081,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
                 return out
                 
-        class _Output:
+        class _Out:
             def __init__(self, outer):
                 self.root = outer.root
                 self.outer = outer
@@ -3234,7 +3180,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert isinstance(binned_spectra, bool), 'binned_spectra must be bool'
                 if not binned_spectra:
                     if 'binned_cosp_dir' not in self.root.Spectral.get_calculation():
-                        warnings.warn('WARNING: you should not set binned_spectra to False when binned cospectra are not available for this dataset. Either set binned_spectra to True or point eddypro to a previous set of spectral data by running Spectral.set_calculation the the binned_cosp_dir argument')
+                        warnings.warn('you should not set binned_spectra to False when binned cospectra are not available for this dataset. Either set binned_spectra to True or point eddypro to a previous set of spectral data by running Spectral.set_calculation the the binned_cosp_dir argument')
                 assert isinstance(binned_ogives, bool), 'binned_ogives must be bool'
                 assert isinstance(ensemble_spectra, bool), 'ensemble_spectra must be bool'
                 assert isinstance(ensemble_cospectra, bool), 'ensemble_cospectra must be bool'
@@ -3255,7 +3201,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 if 'w/ts' not in full_cospectra:
                     if 'fratini_kwargs' in self.root.Spectral.get_hf_correction():
                         if 'full_wts_dir' not in self.root.Spectral.get_hf_correction()['fratini_kwargs']:
-                            warnings.warn("WARNING: when using the Fratini method for high-frequency spectral corrections without available w/Ts spectra, you should include 'w/ts' in the list of full-length cospectral outputs. Either add 'w/ts' to the full_cospectra argument, or run Spectral.set_hf_correction() with full_wts_dir in fratini_kwargs")
+                            warnings.warn("when using the Fratini method for high-frequency spectral corrections without available w/Ts spectra, you should include 'w/ts' in the list of full-length cospectral outputs. Either add 'w/ts' to the full_cospectra argument, or run Spectral.set_hf_correction() with full_wts_dir in fratini_kwargs")
                 
                 self.root.set('RawProcess_Settings', 'out_bin_sp', str(int(binned_spectra)))
                 self.root.set('RawProcess_Settings', 'out_bin_og', str(int(binned_ogives)))
@@ -3421,31 +3367,20 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             
 if __name__ == '__main__':
-    from copy import copy
+    base = EddyproConfigEditor('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
 
-    ref = EddyproConfigEditor(
-        '/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
-    
-    new = ref.copy()
-    new.Basic.set_project_date_range('2021-01-01 00:00', '2023-10-13 14:54')
-    new.Advanced.Spectral.set_calculation( 
-        start='2021-05-10 00:00', 
-        end='2021-05-19 00:00', 
-        window='bartlett', 
-        bins=20, 
-        power_2=False)
-    new.Advanced.Spectral.set_removal_of_high_frequency_noise(3, 4, 5, 6)
-    new.Advanced.Spectral.set_lf_correction(False)
-    fratini_kwargs=dict(
-        co2=(0.001, 1), 
-        h2o=(0.001, 1), 
-        ch4=(0.0001, 30), 
-        gas4=(10, 20), 
-        separation='uvw', 
-        full_wts_dir='test', 
-        include_anemometer_losses=False)
-    new.Advanced.Spectral.set_hf_correction(low_pass_method='fratini', fratini_kwargs=fratini_kwargs)
-    new.Advanced.Spectral.set_qaqc(ustar=(0.21, 0.06, 3.1), n_min=30)
-
-    # print(ref.history['Advanced']['wind_speed_measurement_offsets'])
-    new.to_eddypro('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/test.eddypro', out_path='keep')
+    ref = base.copy()
+    kwargs = dict(
+        w_max=0.9,
+        u_min=0.05,
+        num_per_sector_min=420,
+        north_offset=42,
+        sectors=[(1, 30), (0, 30), (0, 300)],
+        start='project',
+        end='project',
+        fix_method='CCW'
+    )
+    ref.Adv.Proc.set_axis_rotations_for_tilt_correction(
+        method='planar_fit',
+        configure_planar_fit_settings_kwargs=kwargs)
+    compare_configs(base.to_pandas(), ref.to_pandas())
