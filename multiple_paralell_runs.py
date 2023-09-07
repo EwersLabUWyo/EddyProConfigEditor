@@ -1,15 +1,17 @@
 ## python script to create multiple separate eddypro configurations using different settings, and to then run all of those in parallel
+import sys
 from pathlib import Path
 import itertools
-import shutil
 import multiprocessing
 
 from tqdm import tqdm
 
+sys.path.append('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/src/python')
 from python.eddyproconfigeditor import EddyproConfigEditor
 from run_eddypro_parallel import call, make_eddypro_calls
 
 if __name__ == '__main__':
+    
     # setup parent directory
     wd = Path('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro_compare_parallel')
 
@@ -52,9 +54,10 @@ if __name__ == '__main__':
 
             # modify ini files
             ini = EddyproConfigEditor(reference_ini=reference_ini)
-            ini.set_AxisRotationsForTiltCorrection(method=tiltcorr)
-            ini.set_TimeLagCompensations(method=timelag)
-            ini.set_TurbulentFluctuations(method=turbfluct)
+            ini.Adv.Proc.set_axis_rotations_for_tilt_correction
+            ini.Adv.Proc.set_axis_rotations_for_tilt_correction(method=tiltcorr)
+            ini.Adv.Proc.set_timelag_compensations(method=timelag)
+            ini.Adv.Proc.set_turbulent_fluctuations(detrend_method=turbfluct)
             ini.to_eddypro(master_fn, out_path=environment / 'output')
             ini.to_eddypro_parallel(ini_dir, file_duration=30, out_path=environment / 'output')
 
