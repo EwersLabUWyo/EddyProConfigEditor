@@ -100,6 +100,7 @@ TODO: edge cases
     * when writing output, make sure that the program will be able to run,
     * when writing output, check that dates are consistent:
         * if time-dependent settings are selected, such a start='project' for 
+    * when using start, end = project for planar fit manual config, eddypro seems to use ALL AVAILABLE DATA, rather than the project time span. Not sure if that is a "me" issue or an eddypro issue.
 """
 
 def or_isinstance(object, *types):
@@ -327,6 +328,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         self.history = dict()
         self._num_changes = 0
 
+        self.Proj = self._Proj(self)
         self.Basic = self._Basic(self)
         self.Adv = self._Adv(self)
 
@@ -419,6 +421,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if not overlap:
                 warnings.warn(f'spectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.')
         
+        if str(ini_file)[-8:] != '.eddypro':
+            ini_file = str(ini_file) + '.eddypro'
         self.set('Project', 'file_name', str(ini_file))
         if out_path != 'keep':
             self.set('Project', 'out_path', str(out_path))
@@ -528,7 +532,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             # self.set('Project', 'pr_end_date', str(job_end_dates[i]))
             # self.set('Project', 'pr_start_time', str(job_start_times[i]))
             # self.set('Project', 'pr_end_time', str(job_end_times[i]))
-            self.Basic.set_project_id(project_ids[i])
+            self.Basic.set_output_id(project_ids[i])
             # self.set('Project', 'project_id', str(project_ids[i]))
 
             with open(fn, 'w') as configfile:
@@ -543,7 +547,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         # self.set('Project', 'pr_end_date', pr_end_date)
         # self.set('Project', 'pr_start_time', pr_start_time)
         # self.set('Project', 'pr_end_time', pr_end_time)
-        self.Basic.set_project_id(project_id)
+        self.Basic.set_output_id(project_id)
         # self.set('Project', 'project_id', project_id)
 
         return
@@ -717,6 +721,21 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
     def __repr__(self):
         return str(self.to_pandas().drop(columns='Name'))
+    
+    # -------------------Project Creation Page---------------------
+    class _Proj:
+        def __init__(self, root):
+            self.root = root
+
+        def set_project_name(self, name: str):
+            history_args = ('Project', 'project_name', self.get_project_name)
+            self.root._add_to_history(*history_args, True)
+            self.root.set('Project', 'project_title', str(name))
+            self.root._add_to_history(*history_args)
+            return
+        def get_project_name(self):
+            return dict(name=self.root.get('Project', 'project_title'))
+        
     # --------------------Basic Settings Page-----------------------
     class _Basic:
         def __init__(self, root):
@@ -894,16 +913,16 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 magnetic_declination=mag_dec,
                 declination_date=dec_date)
 
-        def set_project_id(self, project_id: str):
-            assert ' ' not in project_id and '_' not in project_id, 'project id must not contain spaces or underscores.'
+        def set_output_id(self, output_id: str):
+            assert ' ' not in output_id and '_' not in output_id, 'output id must not contain spaces or underscores.'
 
-            history_args = ('Basic', 'project_id', self.get_project_id)
+            history_args = ('Basic', 'project_id', self.get_output_id)
             self.root._add_to_history(*history_args, True)
-            self.root.set('Project', 'project_id', str(project_id))
-            self.root._add_to_history(*history_args, True)
-        def get_project_id(self) -> str:
+            self.root.set('Project', 'project_id', str(output_id))
+            self.root._add_to_history(*history_args)
+        def get_output_id(self) -> str:
             """retrieve form the config file the project project ID"""
-            return self.root.get('Project', 'project_id')
+            return dict(output_id=self.root.get('Project', 'project_id'))
 
     # --------------------Advanced Settings Page-----------------------
     class _Adv:
@@ -948,6 +967,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 fix_method: Literal['CW', 'CCW', 'double_rotations'] | int = 'CW',
                 north_offset: int = 0,
                 sectors: Sequence[Sequence[bool | int, float]] = [(False, 360)],
+                return_inputs: bool = False
             ) -> dict:
                 """outputs a dictionary of planarfit settings
 
@@ -960,6 +980,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
                 north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
                 sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. defaults to a single active sector of 360 degrees, [(False, 360)]
+                return_inputs: bool (default False), whether to return a dictionary containing kwargs (excluding this one) provided as input. Useful when used in conjunction with set_axis_rotations_for_tilt_correction
                 
                 limits on inputs:
                 * w_max: 0.5-10
@@ -1047,8 +1068,19 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     n = i + 1
                     settings_dict[f'pf_sector_{n}_exclude'] = int(exclude)
                     settings_dict[f'pf_sector_{n}_width'] = str(width)
-                                                                    
-                return settings_dict
+
+                if not return_inputs: return settings_dict
+                else:
+                    inputs = dict(
+                        w_max=w_max
+                        u_min=u_min
+                        num_per_sector_min=num_per_sector_min
+                        start=start
+                        end=end
+                        fix_method=fix_method
+                        north_offset=north_offset
+                        sectors=sectors)
+                    return inputs
             def set_axis_rotations_for_tilt_correction(
                 self,
                 method: Literal['none', 'double_rotations', 'triple_rotations', 'planar_fit', 'planar_fit_nvb'] | int = 'double_rotations',
@@ -1060,17 +1092,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ----------
                 method: one of 0 or "none" (no tilt correction), 1 or "double_rotations" (default), 2 or "triple_rotations", 3 or "planar_fit" (Wilczak 2001), 4 or "planar_fit_nvb" (planar with with no velocity bias (van Dijk 2004)). If a planar fit-type method is selected, then exactly one of pf_file or pf_settings_kwargs must be provided if method is a planar fit type. 
                 pf_file: path to an eddypro-compatible planar fit file. If provided, planar_fit_settings_kwargs must be None. Ignored if a non-planar-fit setting is provided.
-                pf_settings_kwargs: Arguments to be passed to configure_planar_fit_settings. If provided, pf_file must be None. Ignored if a non-planar-fit setting is provided.
-
-                    kwargs for configure_planar_fit_settings (see `EddyproConfigEditor.Advanced.Processing._configure_planar_fit_settings` documentation for details)
-                    
-                    w_max: the maximum mean vertical wind component for a time interval to be included in the planar fit estimation
-                    u_min: the minimum mean horizontal wind component for a time interval to be included in the planar fit estimation
-                    start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date
-                    num_per_sector_min: the minimum number of valid datapoints for a sector to be computed.
-                    fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
-                    north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
-                    sectors: list of tuples of the form (exclude, width). Where exclude is either a bool (False, True), or an int (0, 1) indicating whether to ingore this sector entirely when estimating planar fit coefficients. Width is a float between 0.1 and 359.9 indicating the width, in degrees of a given sector. Widths must add to one. defaults to a single active sector of 360 degrees, [(False, 360)]
+                pf_settings_kwargs: Arguments to be passed to _configure_planar_fit_settings. If provided, pf_file must be None. Ignored if a non-planar-fit setting is provided. Note: you can get such a dictionary by calling _configure_planar_fit_kwargs with return_inputs=True.
                 """
                 history_args = ('Advanced-Processing', 'axis_rotations_for_tilt_correction', self.get_axis_rotations_for_tilt_correction)
                 self.root._add_to_history(*history_args, True)
