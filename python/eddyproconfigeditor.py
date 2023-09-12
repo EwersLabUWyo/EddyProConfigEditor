@@ -358,7 +358,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         # check that the time window is valid for the project
         start, end = self.Basic.get_project_date_range().values()
         if not self.check_dates((start, end), 'project'):
-            warnings.warn(f'project date range invalid ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")})')
+            warnings.warn(f'\nPROJECT DATE RANGE WARNING:\n({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")})\n')
         
         # check that the planar fit window is valid
         # if the user specified manual planar fit, there are two options
@@ -372,17 +372,24 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if subset:
                 pf_start_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
                 pf_start_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_time')
+                if not pf_start_time:
+                    pf_start_time = '00:00'
                 pf_start = datetime.datetime.strptime(pf_start_date + pf_start_time, r'%Y-%m-%d%H:%M')
                 pf_end_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
                 pf_end_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_time')
+                if not pf_end_time:
+                    pf_end_time = '00:00'
                 pf_end = datetime.datetime.strptime(pf_end_date + pf_end_time,r'%Y-%m-%d%H:%M')
             else:
                 pf_start = start
                 pf_end = end
 
-            overlap = self.check_dates((pf_start, pf_end), 'project', min_overlap=7)
+            overlap = self.check_dates((pf_start, pf_end), (pf_start, pf_end), min_overlap=7)
             if not overlap:
-                warnings.warn(f'planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 7 days of overlap.')
+                message = f'''
+                    \nPLANAR FIT WARNING:
+                    planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) should be at least 7 days long.\n'''
+                warnings.warn(message)
         
         # check that the time opt window is valid
         to_manual_enabled = (
@@ -393,16 +400,23 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if subset:
                 to_start_date = self.get('RawProcess_TimelagOptimization_Settings', 'to_start_date')
                 to_start_time = self.get('RawProcess_TimelagOptimization_Settings', 'to_start_time')
+                if not to_start_time:
+                    to_start_time = '00:00'
                 to_start = datetime.datetime.strptime(to_start_date + to_start_time, r'%Y-%m-%d%H:%M')
                 to_end_date = self.get('RawProcess_TimelagOptimization_Settings', 'to_end_date')
                 to_end_time = self.get('RawProcess_TimelagOptimization_Settings', 'to_end_time')
+                if not to_end_time:
+                    to_end_time = '00:00'
                 to_end = datetime.datetime.strptime(to_end_date + to_end_time,r'%Y-%m-%d%H:%M')
             else:
                 to_start = start
                 to_end = end
             overlap = self.check_dates((to_start, to_end), 'project', min_overlap=30)
             if not overlap:
-                warnings.warn(f'timelag auto opt window ({to_start.strftime(r"%Y-%m-%d %H:%M")} -> {to_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.')
+                message = f'''
+                    \nTIME LAG OPTIMIZATION WARNING:
+                    timelag auto opt window ({to_start.strftime(r"%Y-%m-%d %H:%M")} -> {to_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
+                warnings.warn(message)
         
         # check that the spectral analysis window is valid
         # works the same as timelag and planarfit, except we just check to see if binned spectra are available
@@ -412,16 +426,23 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if subset:
                 sa_start_date = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_date')
                 sa_start_time = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_time')
+                if not sa_start_time:
+                    sa_start_time = '00:00'
                 sa_start = datetime.datetime.strptime(sa_start_date + sa_start_time, r'%Y-%m-%d%H:%M')
                 sa_end_date = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_date')
                 sa_end_time = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_time')
+                if not sa_end_time:
+                    sa_end_time = '00:00'
                 sa_end = datetime.datetime.strptime(sa_end_date + sa_end_time,r'%Y-%m-%d%H:%M')
             else:
                 sa_start = start
                 sa_end = end
             overlap = self.check_dates((sa_start, sa_end), 'project', min_overlap=30)
             if not overlap:
-                warnings.warn(f'spectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.')
+                message = f'''
+                    \nSPECTRAL ANALYSIS WARNING
+                    spectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
+                warnings.warn(message)
         
         if str(ini_file)[-8:] != '.eddypro':
             ini_file = str(ini_file) + '.eddypro'
@@ -499,10 +520,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
         if len(job_starts) <= 1: warnings.warn(f"job size too long. Submitting {len(job_starts)} jobs")
         # dates are inclusive, so subtract 30min for file duration
         job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
-        # job_start_dates = job_starts.strftime(date_format=r'%Y-%m-%d')
-        # job_start_times = job_starts.strftime(date_format=r'%H:%M')
-        # job_end_dates = job_ends.strftime(date_format=r'%Y-%m-%d')
-        # job_end_times = job_ends.strftime(date_format=r'%H:%M')
 
         # give each project a unique id and file name
         project_ids = [
@@ -515,10 +532,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
         # save original settings
         old_file_name = self.get('Project', 'file_name')
         old_out_path = self.Basic.get_out_path()
-        # pr_start_date = self.get('Project', 'pr_start_date')
-        # pr_end_date = self.get('Project', 'pr_end_date')
-        # pr_start_time = self.get('Project', 'pr_start_time')
-        # pr_end_time = self.get('Project', 'pr_end_time')
         project_id = self.Basic.get_project_id()
 
         # write new files
@@ -779,6 +792,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             out = dict()
             start_date = self.root.get('Project', 'pr_start_date')
             start_time = self.root.get('Project', 'pr_start_time')
+            if start_time is None:
+                start_time = '00:00'
             out['start'] = datetime.datetime.strptime(f'{start_date} {start_time}', r'%Y-%m-%d %H:%M')
             
             return out
@@ -809,6 +824,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             out = dict()
             end_date = self.root.get('Project', 'pr_end_date')
             end_time = self.root.get('Project', 'pr_end_time')
+            if end_time is None:
+                end_time = '00:00'
             out['end'] = datetime.datetime.strptime(f'{end_date} {end_time}', r'%Y-%m-%d %H:%M')
             
             return out
@@ -820,7 +837,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ):
             """format yyyy-mm-dd HH:MM for strings"""
             if end < start:
-                warnings.warn(f'Selected processing period is invalid: {str(start)} -> {str(end)}')
+                warnings.warn(f'Selected processing period is invalid, start comes after end: {str(start)} -> {str(end)}')
             self.set_project_start_date(start)
             self.set_project_end_date(end)
         def get_project_date_range(self) -> dict:
@@ -964,8 +981,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 w_max: float,
                 u_min: float,
                 num_per_sector_min: int,
-                start: str | datetime.datetime | Literal['project'] = 'project',
-                end: str | datetime.datetime | Literal['project'] = 'project',
+                start: str | datetime.datetime | Literal['project', 'all_available'] = 'all_available',
+                end: str | datetime.datetime | Literal['project', 'all_available'] = 'all_available',
                 fix_method: Literal['CW', 'CCW', 'double_rotations'] | int = 'CW',
                 north_offset: int = 0,
                 sectors: Sequence[Sequence[bool | int, float]] = [(False, 360)],
@@ -977,7 +994,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ----------
                 w_max: the maximum mean vertical wind component for a time interval to be included in the planar fit estimation
                 u_min: the minimum mean horizontal wind component for a time interval to be included in the planar fit estimation
-                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
+                start, end: start and end date-times for planar fit computation. If a string, must be in yyyy-mm-dd HH:MM format, "all_available," or "project." If "project", sets the start/end of the planar fit computation to the CURRENT project start/end dates. Note that if you change the project start/end dates AFTER applying this setting, the planar fit will still use the OLD dates. If 'all_available' (default), have eddypro use all available raw data, whether in the project date window or not. You cannot mix types: ie you cannot provide start='project' and end='all_available'. This differs from the behavior of Proc._configure_timelag_autoopt and Spec.set_calculation, which are far less sensitive to this setting.
                 num_per_sector_min: the minimum number of valid datapoints for a sector to be computed.
                 fix_method: one of CW, CCW, or double_rotations or 0, 1, 2. The method to use if a planar fit computation fails for a given sector. Either next valid sector clockwise, next valid sector, counterclockwise, or double rotations. Default is next valid sector clockwise.
                 north_offset: the offset for the counter-clockwise-most edge of the first sector in degrees from -180 to 180. Default 0.
@@ -1006,13 +1023,17 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert or_isinstance(start, str, datetime.datetime), 'starting timestamp must be string or datetime.datetime'
                 assert or_isinstance(end, str, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
                 if isinstance(start, str):
-                    assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    assert len(start) == 16 or start in ['project', 'all_available'], 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM, "all_available", or "project"'
                     if start == 'project':
                         assert end == 'project', 'if one of start, end is "project", the other must be as well.'
+                    elif start == 'all_available':
+                        assert end == 'all_available', 'if one of start, end is "all_available", the other must be as well.'
                 if isinstance(end, str):
-                    assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    assert len(end) == 16 or end in ['project', 'all_available'], 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM, "all_available", or "project"'
                     if end == 'project':
                         assert start == 'project', 'if one of start, end is "project", the other must be as well.'
+                    if end == 'all_available':
+                        assert start == 'all_available', 'if one of start, end is "all_available", the other must be as well.'
                 assert isinstance(sectors, Sequence), 'sectors must be a sequence'
                 assert len(sectors) <= 12, f'was given {len(sectors)} sectors. No more than 12 are permitted'
                 total_width = 0
@@ -1028,10 +1049,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # process dates
                 # if user specifies "project," we choose start and end dates, but they don't end up mattering because we set pf_subset = 0
                 settings_dict = dict()
-                if start == 'project':
+                if start == 'all_available':
                     settings_dict['pf_subset'] = 0
                     pf_start, pf_end = self.root.Basic.get_project_date_range().values()
                 else:
+                    if start == 'project':
+                        start = self.root.Basic.get_project_start_date()['start']
+                        end = self.root.Basic.get_project_end_date()['start']
                     settings_dict['pf_subset'] = 1
                     if isinstance(start, datetime.datetime):
                         pf_start = start
@@ -1046,11 +1070,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     else:
                         pf_end = end
                         settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_end.split(' ')
-                    
-                # check that the date range is valid for this project
-                overlap = self.root.check_dates(interval=(pf_start, pf_end), reference='project', min_overlap=14)
-                if not overlap:
-                    warnings.warn(f'insufficient overlap ({overlap} days) between planar fit time window ({pf_start} -> {pf_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 14 days are required')
                 
                 # fix method
                 fix_dict = dict(CW=0, CCW=1, double_rotations=2)
@@ -1377,10 +1396,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     to_end = end
                     to_end_date, to_end_time = to_end.split(' ')
-                # check that the date range is valid for this project
-                overlap = self.root.check_dates(interval=(to_start, to_end), reference='project', min_overlap=30)
-                if not overlap:
-                    warnings.warn(f'insufficient overlap ({overlap} days) between time lag optimization time window ({to_start} -> {to_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 30 days are required')
                 
                 # lag settings default to "automatic detection" for the value -1000.1
                 settings_with_special_defaults = [
@@ -2716,10 +2731,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     sa_end = end
                     sa_end_date, sa_end_time = sa_end.split(' ')
-                # check that the date range is valid for this project
-                overlap = self.root.check_dates(interval=(sa_start, sa_end), reference='project', min_overlap=30)
-                if not overlap:
-                    warnings.warn(f'insufficient overlap ({overlap} days) between time lag optimization time window ({sa_start} -> {sa_end}) and project time window ({self.root.Basic.get_project_start_date()} -> {self.root.Basic.get_project_end_date()}). At least 30 days are required')
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_date', sa_start_date)
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_time', sa_start_time)
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_date', sa_end_date)
