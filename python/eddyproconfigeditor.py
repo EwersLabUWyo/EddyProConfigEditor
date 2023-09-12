@@ -254,15 +254,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
     Notes
     -----
-    this class splits up settings by how they are laid out in the EddyPro 7 GUI,
+    This class splits up settings by how they are laid out in the EddyPro 7 GUI,
     and contains 3 nested classes:
-    * `Project` contains settings from the Project Creation pane
-    * `Basic` contains settings from the basic settings pane
-    * `Advanced` contains settings from the advanced settings pane, which is broken up into four more nested classes:
-        * `Processing` -- settings from the processing option pane
-        * `Statistical` -- settings from the statistical analysis pane
-        * `Spectral` -- settings from the spectral analysis and corrections pane
-        * `Output` -- settings from the output options pane
+        * `Project` contains settings from the Project Creation pane
+        * `Basic` contains settings from the basic settings pane
+        * `Advanced` contains settings from the advanced settings pane, which is broken up into four more nested classes:
+            * `Processing` -- settings from the processing option pane
+            * `Statistical` -- settings from the statistical analysis pane
+            * `Spectral` -- settings from the spectral analysis and corrections pane
+            * `Output` -- settings from the output options pane
 
     To imitate how the eddypro GUI changes INI settings, each of these nested classes contains
     `set_XXXX` methods which reproduce the functionality of the respective buttons and panels in the eddypro GUI.
@@ -321,6 +321,40 @@ class EddyproConfigEditor(configparser.ConfigParser):
     '2021-04-21'
     >>> ini._project_start_date
     True
+
+    Some settings affect the function of other settings. 
+    For example, consider the following set of commands:
+    >>> # instantiate from file
+    >>> ini = EddyProConfigEditor('./config.eddypro')
+    >>> # set the project date range, but mistakenly enter 1901 instead of 2021
+    >>> ini.Basic.set_project_date_range('1901-01-01 00:00', '1902-01-01 00:00')
+    >>> # set the planar fit method to fit the project time window
+    >>> ini.Adv.Proc.set_axis_rotations_for_tilt_correction(
+    >>>     method='planar_fit',
+            configure_planar_fit_settings_kwargs=dict(
+                w_max=2, 
+                u_min=0.1, 
+                num_per_sector_min=5, 
+                sectors=[(False, 360)], 
+                start='project',
+                end='project'))
+    >>> # fix our earlier mistake by setting the correct project date range
+    >>> ini.Basic.set_project_date_range('2021-01-01 00:00', '2022-01-01 00:00')
+    >>> # read out the planar fit time window
+    >>> ini.Adv.Proc.get_axis_rotations_for_tilt_correction()['configure_planar_fit_settings_kwargs']['start']
+    '1901-01-01 00:00'
+
+    Note how when we set the project date range AFTER setting the planar fit date range to 'project', the planar fit date range did not update.
+    To avoid errors like this, it's highly recommended to modify settings in the following order:
+        1. Project settings
+        2. Basic Settings
+        3. Advanced Settings
+            1. Processing settings
+            2. Statistical settings
+            3. Spectral settings
+            4. Output settings.
+    So if you make a change in output settings, make sure that it comes after, and not before, any changes in Project, Basic, Advanced/Processing, Advanced/Statistical, and Advanced/Spectral
+        
     '''
     def __init__(self, reference_ini: str | PathLike[str]):
         super().__init__(allow_no_value=True)

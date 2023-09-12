@@ -38,8 +38,8 @@ if __name__ == '__main__':
             u_min=0.1, 
             num_per_sector_min=5, 
             sectors=[(False, 360)], 
-            start='2020-06-21 00:00',
-            end='2020-06-28 00:00',
+            start='project',
+            end='project',
             return_inputs=True))
     pf_base.Proj.set_project_name('basic workflow')
     pf_base.Basic.set_output_id(_id)
