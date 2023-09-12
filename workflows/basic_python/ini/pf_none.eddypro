@@ -2,7 +2,7 @@
 [FluxCorrection_SpectralAnalysis_General]
 add_sonic_lptf=1
 ex_dir=
-ex_file=/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/output/eddypro_none_fluxnet_2023-09-12T120027_adv.csv
+ex_file=/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/output/eddypro_none_fluxnet_2023-09-12T161544_adv.csv
 horst_lens=2
 sa_bin_spectra=
 sa_ch4_g1_start=1
@@ -97,7 +97,7 @@ hf_correct_ghg_ba=1
 hf_correct_ghg_zoh=1
 hf_meth=1
 ini_version=4.5.0
-last_change_date=2023-09-07T13:54:57
+last_change_date=2023-09-12T14:57:38
 lf_meth=1
 make_dataset=1
 master_sonic=csat3_1
@@ -339,7 +339,6 @@ tlag_meth=0
 u_offset=0
 v_offset=0
 w_offset=0
-out_full_cosp_w_o=0
 
 [RawProcess_Tests]
 test_aa=0
@@ -353,22 +352,20 @@ test_sr=1
 test_tl=0
 
 [RawProcess_TiltCorrection_Settings]
-pf_end_date=2020-07-22
+pf_end_date=2020-06-28
 pf_end_time=00:00
-pf_file=/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/output/eddypro_manual_planar_fit_2023-09-11T144655_adv.txt
+pf_file=/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/output/eddypro_manual_planar_fit_2023-09-12T155819_adv.txt
 pf_fix=0
 pf_min_num_per_sec=5
 pf_mode=0
 pf_north_offset=0
 pf_start_date=2020-06-21
-pf_start_time=
-pf_subset=0
+pf_start_time=00:00
+pf_subset=1
 pf_u_min=0.1
 pf_w_max=2
-pf_sector_1_exclude=0
-pf_sector_1_width=270
-pf_sector_2_exclude=1
-pf_sector_2_width=90
+pf_sect_1_exclude=0
+pf_sect_1_width=360
 
 [RawProcess_TimelagOptimization_Settings]
 to_ch4_max_lag=-1000.1

@@ -103,6 +103,48 @@ TODO: edge cases
     * PF data does NOT have to overlap with project data, but must be a valid range of raw data.
     * Spectral data DOES have to sufficiently overlap with project data.
     * If a time is empty in the .eddypro file, it can be interpreted as 00:00
+
+NOTE: Eddypro's order of operations
+
+Calculations on raw, unprocessed data (not applied yet)
+1. Perform Timelag autoopt calculation if requested
+2. Perform planar fit calculation if requested (but do not apply yet)
+
+Apply corrections to raw data:
+1. Apply calibration events from metadata (but do not apply yet)
+2. Apply statistical tests
+    a. Absolute limits
+    b. Despike
+    c. Dropouts
+    d. Amplitude resolution
+    e. Skewness & Kurtosis
+    f. Discontinuities
+    g. Time lag
+    h. AoA
+    i. Non-steady horizontal wind
+3. Cross-wind correction
+4. AoA Correction
+5. APPLY Tilt correction: compute DR/TR if requested, otherwise use planar fit file generated or loaded in (2)
+6. APPLY Time lag compensation: compute CovMax if requested, otherwise use the to file generated or loaded in (1)
+7. Detrend/average data
+
+Calculate spectral information (do not apply yet)
+1. Compute burba corrections
+2. Compute low-pass correction factors
+3. Compute high-pass corrections factors
+4. Compute level 1 fluxes
+5. Compute level 2 and 3 fluxes
+6. Compute footprint
+7. Compute storage
+8. Compute foken turbulence tests
+
+Flux computation
+
+Note: If Ibrom, Fratini, or Horst low-pass filtering is requested, that will be performed in eddypro_fcc, in a final step.
+
+
+
+
 """
 
 def or_isinstance(object, *types):
@@ -421,8 +463,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             overlap = self.check_dates((pf_start, pf_end), (pf_start, pf_end), min_overlap=7)
             if not overlap:
                 message = f'''
-                    \nPLANAR FIT WARNING:
-                    planar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) should be at least 7 days long.\n'''
+                    \nPLANAR FIT WARNING:\nplanar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) should be at least 7 days long.\n'''
                 warnings.warn(message)
         
         # check that the time opt window is valid
@@ -448,8 +489,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             overlap = self.check_dates((to_start, to_end), 'project', min_overlap=30)
             if not overlap:
                 message = f'''
-                    \nTIME LAG OPTIMIZATION WARNING:
-                    timelag auto opt window ({to_start.strftime(r"%Y-%m-%d %H:%M")} -> {to_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
+                    \nTIME LAG OPTIMIZATION WARNING:\ntimelag auto opt window ({to_start.strftime(r"%Y-%m-%d %H:%M")} -> {to_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
                 warnings.warn(message)
         
         # check that the spectral analysis window is valid
@@ -474,8 +514,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             overlap = self.check_dates((sa_start, sa_end), 'project', min_overlap=30)
             if not overlap:
                 message = f'''
-                    \nSPECTRAL ANALYSIS WARNING
-                    spectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
+                    \nSPECTRAL ANALYSIS WARNING:\nSpectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
                 warnings.warn(message)
         
         if str(ini_file)[-8:] != '.eddypro':
@@ -1085,11 +1124,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 settings_dict = dict()
                 if start == 'all_available':
                     settings_dict['pf_subset'] = 0
-                    pf_start, pf_end = self.root.Basic.get_project_date_range().values()
                 else:
                     if start == 'project':
-                        start = self.root.Basic.get_project_start_date()['start']
-                        end = self.root.Basic.get_project_end_date()['start']
+                        start, end = self.root.Basic.get_project_date_range().values()
                     settings_dict['pf_subset'] = 1
                     if isinstance(start, datetime.datetime):
                         pf_start = start
