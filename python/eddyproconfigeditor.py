@@ -1,6 +1,6 @@
 import configparser
 from pathlib import Path
-from typing import Literal, Self
+from typing import Literal
 import datetime
 from os import PathLike
 import os
@@ -100,7 +100,9 @@ TODO: edge cases
     * when writing output, make sure that the program will be able to run,
     * when writing output, check that dates are consistent:
         * if time-dependent settings are selected, such a start='project' for 
-    * when using start, end = project for planar fit manual config, eddypro seems to use ALL AVAILABLE DATA, rather than the project time span. Not sure if that is a "me" issue or an eddypro issue.
+    * PF data does NOT have to overlap with project data, but must be a valid range of raw data.
+    * Spectral data DOES have to sufficiently overlap with project data.
+    * If a time is empty in the .eddypro file, it can be interpreted as 00:00
 """
 
 def or_isinstance(object, *types):
@@ -692,7 +694,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                                 target_i += 1
         print(ops)
 
-    def copy(self) -> Self:
+    def copy(self):
         """copies this config through a temporary file. The resulting copy is independent of this instance"""
         tmp = tempfile.NamedTemporaryFile(mode='w', delete=False)
         try:
@@ -987,7 +989,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 * u_min: 0.001 - 10
                 * num_per_sector_min: 1-10_000
                 * north_offset: -180 - +180
-                * sectors: 1-12 sectors, sectors must total 360 degrees, each sector between 0.1 and 360 degrees
+                * sectors: 1-12 sectors, sectors must total ≤360 degrees, each sector between 0.1 and 360 degrees
 
                 Returns
                 -------
@@ -1021,7 +1023,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     assert or_isinstance(s[1], bool, float, int), f'The second entry in each sector must be a float or an int. Received {type(s[1])} for sector {i}'
                     assert s[1] >= 0.1, f'Each sector must be greater or equal to 0.1° wide. Received width={s[1]}° for sector {i}'
                     total_width += s[1]
-                assert total_width == 360., f'Sectors must cover exactly 360 degrees in aggregate. Given sectors only total {total_width}°'
+                assert total_width <= 360., f'Sum of sector widths must not exceed 360 degrees. Given sectors total {total_width}°'
 
                 # process dates
                 # if user specifies "project," we choose start and end dates, but they don't end up mattering because we set pf_subset = 0
@@ -1036,7 +1038,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         settings_dict['pf_start_date'], settings_dict['pf_start_time'] = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
                     else:
                         pf_start = start
-                        settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_start.split(' ')
+                        settings_dict['pf_start_date'], settings_dict['pf_start_time'] = pf_start.split(' ')
 
                     if isinstance(end, datetime.datetime):
                         pf_end = end
@@ -1066,19 +1068,19 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 for i, sector in enumerate(sectors):
                     exclude, width = sector
                     n = i + 1
-                    settings_dict[f'pf_sector_{n}_exclude'] = int(exclude)
-                    settings_dict[f'pf_sector_{n}_width'] = str(width)
+                    settings_dict[f'pf_sect_{n}_exclude'] = int(exclude)
+                    settings_dict[f'pf_sect_{n}_width'] = str(width)
 
                 if not return_inputs: return settings_dict
                 else:
                     inputs = dict(
-                        w_max=w_max
-                        u_min=u_min
-                        num_per_sector_min=num_per_sector_min
-                        start=start
-                        end=end
-                        fix_method=fix_method
-                        north_offset=north_offset
+                        w_max=w_max,
+                        u_min=u_min,
+                        num_per_sector_min=num_per_sector_min,
+                        start=start,
+                        end=end,
+                        fix_method=fix_method,
+                        north_offset=north_offset,
                         sectors=sectors)
                     return inputs
             def set_axis_rotations_for_tilt_correction(
@@ -1201,11 +1203,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             exclude = int(
                                 self.root.get(
                                     'RawProcess_TiltCorrection_Settings',
-                                    f'pf_sector_{n}_exclude'))
+                                    f'pf_sect_{n}_exclude'))
                             width = float(
                                 self.root.get(
                                     'RawProcess_TiltCorrection_Settings',
-                                    f'pf_sector_{n}_width'))
+                                    f'pf_sect_{n}_width'))
                             sectors.append((exclude, width))
                         except configparser.NoOptionError:
                             break
