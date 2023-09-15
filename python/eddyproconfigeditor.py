@@ -857,7 +857,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             else:
                 static = self.root.get('Project', 'proj_file')
             
-            if self.root.get('Project', 'use_dyn_metadata_file') == '1':
+            if self.root.get('Project', 'use_dyn_md_file') == '1':
                 dynamic = self.root.get('dyn_metadata_file')
             else:
                 dynamic = False
@@ -912,6 +912,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     mode = 'file'
                     path = self.root.get('Project', 'biom_file')
                 case '3':
+                    mode='dir'
                     path = self.root.get('Project', 'biom_dir')
                     subfolders = bool(int(self.root.get('Project', 'biom_rec')))
                     extension = self.root.get('Project', 'biom_ext')[1:]
@@ -1046,7 +1047,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         def get_project_date_range(self) -> dict:
             """retrieve form the config file the project start and end dates. Output can be can be passed to set_project_date_range as kwargs"""
-            if self.root.get('Project', 'pr_subset', '0'):
+            if self.root.get('Project', 'pr_subset'):
                 start = end = 'all_available'
             else:
                 start = self.get_project_start_date()['start']
