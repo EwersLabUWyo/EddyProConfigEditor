@@ -824,7 +824,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def get_project_name(self):
             return dict(name=self.root.get('Project', 'project_title'))
         
-        def set_metadata(self, static:str|PathLike|Literal['embedded'], dynamic:str|PathLike|False=False):
+        def set_metadata(self, static:str|PathLike|Literal['embedded'], dynamic:str|PathLike|bool=False):
             """set the metadata information
             
             Parameters
