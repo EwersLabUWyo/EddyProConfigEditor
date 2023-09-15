@@ -3,8 +3,8 @@ module load arcc/1.0 gcc/12.2.0 eddyproengine/7.0.9
 system="linux"  # change before running on mac or win
 
 # set up directory struct
-environment=$(dirname $0)
-environment=$(realpath "${localdir}")
+environment="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
+echo $environment
 mkdir "${environment}/output" -p
 mkdir "${environment}/tmp" -p
 
