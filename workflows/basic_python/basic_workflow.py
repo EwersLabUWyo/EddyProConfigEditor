@@ -10,14 +10,18 @@ from python.eddyproconfigeditor import EddyproConfigEditor
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--pf_file', action='store_true')
+    
     args = parser.parse_args()
 
     ini_dir = wd/'ini'
     base_fn = ini_dir / 'base.eddypro'
     out_path = wd/'output'
 
-    # read in default .eddypro config
+    # read in default .eddypro config and change some system-specific settings for beartooth
     base = EddyproConfigEditor(base_fn)
+    base.Proj.set_metadata(static=ini_dir / 'lcreek.metadata')
+    base.Proj.set_biomet(mode='dir', path='/home/afox18/eddycovworkflow/InputData/LostCreek/biomet', extension='data', subfolders=False)
+    base.Basic.set_raw_data(path='/home/afox18/eddycovworkflow/InputData/LostCreek/raw_data', fmt='LostCreek_ts_data_yyyy_mm_dd_HHMM.dat', subfolders=True)
     
     # set EP to perform a planar fit correction in "manual mode"
     # running in manual mode will prompt EP to output a planar fit config file
