@@ -1,8 +1,10 @@
+# if working on beartooth:
+module load arcc/1.0 gcc/12.2.0 eddyproengine/7.0.9
+system="linux"  # change before running on mac or win
 
-eddypro_rp="/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/eddypro_rp"
-eddypro_fcc="/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/eddypro/eddypro_fcc"
-environment="/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python"
-script="/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/basic_workflow.py"
+# set up directory struct
+environment=$(dirname $0)
+environment=$(realpath "${localdir}")
 
 # 1. generate a re-useable planar fit config file by running eddypro in manual planar fit mode
 # generating the reusable file takes about 30 seconds per day (0.6s per HH or 3hr/year) of data
@@ -11,31 +13,30 @@ script="/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-e
 # from my BOTE calculation, this script should run in ~22 minutes.
 # if we were to perform the planar fit calculation for every eddypro run, it would take ~25 minutes instead.
 # as the number of "duplicate" runs increases, this workflow quickly asymptotes to run in ~60% of the time.
-# python "${script}"
-# # first eddypro call: generate planar fit data
-# PROJ_FILE="/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/ini/pf_base.eddypro"
-# "${eddypro_rp}" \
-#     -s mac \
-#     -e "${environment}" \
-#     "${PROJ_FILE}"
-# "${eddypro_fcc}" \
-#     -s mac \
-#     -e "${environment}" \
-#     "${PROJ_FILE}"
+python "${environment}/basic_workflow.py"
+PROJ_FILE="${environment}/ini/pf_base.eddypro"
+"${eddypro_rp}" \
+     -s "${system}" \
+     -e "${environment}" \
+     "${PROJ_FILE}"
+ "${eddypro_fcc}" \
+     -s "${system}" \
+     -e "${environment}" \
+     "${PROJ_FILE}"
 
-# # 2. run eddypro using the planar fit config file.
-# python "${script}" --pf_file
+# 2. run eddypro using the planar fit config file.
+python "${environment}/basic_workflow.py" --pf_file
 for NEW_PROJ_FILE in \
-    "/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/ini/pf_covariance_maximization.eddypro" \
-    "/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/ini/pf_covariance_maximization_with_default.eddypro" \
-    "/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/basic_python/ini/pf_none.eddypro" 
+    "${environment}/ini/pf_covariance_maximization.eddypro" \
+    "${environment}/ini/pf_covariance_maximization_with_default.eddypro" \
+    "${environment}/ini/pf_none.eddypro" 
 do
     "${eddypro_rp}" \
-        -s mac \
+        -s "${system}" \
         -e "${environment}" \
         "${NEW_PROJ_FILE}"
     "${eddypro_fcc}" \
-        -s mac \
+        -s "${system}" \
         -e "${environment}" \
         "${NEW_PROJ_FILE}"
 done
