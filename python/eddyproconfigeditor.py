@@ -824,7 +824,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def get_project_name(self):
             return dict(name=self.root.get('Project', 'project_title'))
         
-        def set_metadata(self, static:str | PathLike | Literal['embedded'], dynamic:str | PathLike|bool=False):
+        def set_metadata(self, static:str|PathLike|Literal['embedded'], dynamic:str|PathLike|False=False):
             """set the metadata information
             
             Parameters
@@ -2928,7 +2928,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     sa_start = start
                     sa_start_date, sa_start_time = sa_start.split(' ')
-
+                    
                 if end == 'project':
                     sa_end = self.root.Basic.get_project_end_date()['end']
                     sa_end_date, sa_end_time = sa_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
