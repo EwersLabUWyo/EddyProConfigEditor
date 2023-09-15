@@ -430,92 +430,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
         If any other time-specific settings are being used, it will check those for validity too,
         such as planar fit settings, time lag auto-optimization settings, spectra calculation settings.
         """
-
-        # check that the time window is valid for the project
-        start, end = self.Basic.get_project_date_range().values()
-        if not self.check_dates((start, end), 'project'):
-            warnings.warn(f'\nPROJECT DATE RANGE WARNING:\n({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")})\n')
-        
-        # check that the planar fit window is valid
-        # if the user specified manual planar fit, there are two options
-        # 1) if the user specified to use a custom date range, subset will be 1
-        # 2) if the user did not specify a custom date range, subset will be 0 and the pf dates will be the project dates.
-        pf_manual_enabled = (
-            bool(int(self.get('RawProcess_TiltCorrection_Settings', 'pf_mode')))  # pf mode 1 is manual config
-            and self.get('RawProcess_Settings', 'rot_meth') in ['3', '4'])  # 3 and 4 are planar fits
-        if pf_manual_enabled:
-            subset = bool(int(self.get('RawProcess_TiltCorrection_Settings', 'pf_subset')))
-            if subset:
-                pf_start_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_date')
-                pf_start_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_start_time')
-                if not pf_start_time:
-                    pf_start_time = '00:00'
-                pf_start = datetime.datetime.strptime(pf_start_date + pf_start_time, r'%Y-%m-%d%H:%M')
-                pf_end_date = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_date')
-                pf_end_time = self.get('RawProcess_TiltCorrection_Settings', 'pf_end_time')
-                if not pf_end_time:
-                    pf_end_time = '00:00'
-                pf_end = datetime.datetime.strptime(pf_end_date + pf_end_time,r'%Y-%m-%d%H:%M')
-            else:
-                pf_start = start
-                pf_end = end
-
-            overlap = self.check_dates((pf_start, pf_end), (pf_start, pf_end), min_overlap=7)
-            if not overlap:
-                message = f'''
-                    \nPLANAR FIT WARNING:\nplanar fit window ({pf_start.strftime(r"%Y-%m-%d %H:%M")} -> {pf_end.strftime(r"%Y-%m-%d %H:%M")}) should be at least 7 days long.\n'''
-                warnings.warn(message)
-        
-        # check that the time opt window is valid
-        to_manual_enabled = (
-            bool(int(self.get('RawProcess_TimelagOptimization_Settings', 'to_mode')))
-            and self.get('RawProcess_Settings', 'tlag_meth') == '4')
-        if to_manual_enabled:
-            subset = bool(int(self.get('RawProcess_TimelagOptimization_Settings', 'to_subset')))
-            if subset:
-                to_start_date = self.get('RawProcess_TimelagOptimization_Settings', 'to_start_date')
-                to_start_time = self.get('RawProcess_TimelagOptimization_Settings', 'to_start_time')
-                if not to_start_time:
-                    to_start_time = '00:00'
-                to_start = datetime.datetime.strptime(to_start_date + to_start_time, r'%Y-%m-%d%H:%M')
-                to_end_date = self.get('RawProcess_TimelagOptimization_Settings', 'to_end_date')
-                to_end_time = self.get('RawProcess_TimelagOptimization_Settings', 'to_end_time')
-                if not to_end_time:
-                    to_end_time = '00:00'
-                to_end = datetime.datetime.strptime(to_end_date + to_end_time,r'%Y-%m-%d%H:%M')
-            else:
-                to_start = start
-                to_end = end
-            overlap = self.check_dates((to_start, to_end), 'project', min_overlap=30)
-            if not overlap:
-                message = f'''
-                    \nTIME LAG OPTIMIZATION WARNING:\ntimelag auto opt window ({to_start.strftime(r"%Y-%m-%d %H:%M")} -> {to_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
-                warnings.warn(message)
-        
-        # check that the spectral analysis window is valid
-        # works the same as timelag and planarfit, except we just check to see if binned spectra are available
-        sa_manual_enabled = bool(1 - int(self.get('Project', 'bin_sp_avail')))
-        if sa_manual_enabled:
-            subset = bool(int(self.get('FluxCorrection_SpectralAnalysis_General', 'sa_subset')))
-            if subset:
-                sa_start_date = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_date')
-                sa_start_time = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_start_time')
-                if not sa_start_time:
-                    sa_start_time = '00:00'
-                sa_start = datetime.datetime.strptime(sa_start_date + sa_start_time, r'%Y-%m-%d%H:%M')
-                sa_end_date = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_date')
-                sa_end_time = self.get('FluxCorrection_SpectralAnalysis_General', 'sa_end_time')
-                if not sa_end_time:
-                    sa_end_time = '00:00'
-                sa_end = datetime.datetime.strptime(sa_end_date + sa_end_time,r'%Y-%m-%d%H:%M')
-            else:
-                sa_start = start
-                sa_end = end
-            overlap = self.check_dates((sa_start, sa_end), 'project', min_overlap=30)
-            if not overlap:
-                message = f'''
-                    \nSPECTRAL ANALYSIS WARNING:\nSpectral analysis window ({sa_start.strftime(r"%Y-%m-%d %H:%M")} -> {sa_end.strftime(r"%Y-%m-%d %H:%M")}) does not sufficiently overlap with project date range ({start.strftime(r"%Y-%m-%d %H:%M")} -> {end.strftime(r"%Y-%m-%d %H:%M")}). There must be at least 30 days of overlap.\n'''
-                warnings.warn(message)
         
         if str(ini_file)[-8:] != '.eddypro':
             ini_file = str(ini_file) + '.eddypro'
@@ -1257,25 +1171,33 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # process dates
                 # if user specifies "project," we choose start and end dates, but they don't end up mattering because we set pf_subset = 0
                 settings_dict = dict()
-                if start == 'all_available':
-                    settings_dict['pf_subset'] = 0
-                else:
-                    if start == 'project':
-                        start, end = self.root.Basic.get_project_date_range().values()
-                    settings_dict['pf_subset'] = 1
-                    if isinstance(start, datetime.datetime):
-                        pf_start = start
-                        settings_dict['pf_start_date'], settings_dict['pf_start_time'] = pf_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
-                    else:
-                        pf_start = start
-                        settings_dict['pf_start_date'], settings_dict['pf_start_time'] = pf_start.split(' ')
-
-                    if isinstance(end, datetime.datetime):
-                        pf_end = end
-                        settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
-                    else:
-                        pf_end = end
-                        settings_dict['pf_end_date'], settings_dict['pf_end_time'] = pf_end.split(' ')
+                
+                match start, end:
+                    case 'all_available', 'all_available':
+                        settings_dict['pf_subset'] = 0
+                    case 'project', 'project':
+                        if self.root.Basic.get_project_date_range()['start'] == 'all_available':
+                            settings_dict['pf_subset'] = 0
+                        else:
+                            settings_dict['pf_subset'] = 1
+                            start, end = self.root.Basic.get_project_date_range().values()
+                            start_date, start_time = start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                            end_date, end_time = end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                            settings_dict['pf_start_date'] = start_date
+                            settings_dict['pf_start_time'] = start_time
+                            settings_dict['pf_end_date'] = end_date
+                            settings_dict['pf_end_time'] = end_time
+                    case _:
+                        if isinstance(start, datetime.datetime):
+                            start = start.strftime(r'%Y-%m-%d %H:%M')
+                        if isinstance(end, datetime.datetime):
+                            end = end.strftime(r'%Y-%m-%d %H:%M')
+                        start_date, start_time = start.split(' ')
+                        end_date, end_time = end.split(' ')
+                        settings_dict['pf_start_date'] = start_date
+                        settings_dict['pf_start_time'] = start_time
+                        settings_dict['pf_end_date'] = end_date
+                        settings_dict['pf_end_time'] = end_time
                 
                 # fix method
                 fix_dict = dict(CW=0, CCW=1, double_rotations=2)
@@ -1581,28 +1503,26 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         assert len(v) == 2, f'{k} must be None, or a sequence of 2 numbers'
                         assert v[0] < v[1], f'time lag search window must have positive width. Received {k}={v}.'
                 
+                settings_dict = dict()
                 # process dates
-                to_subset = 1
+                settings_dict['to_subset'] = 1
                 if start == 'project':
-                    to_subset = 0
-                    to_start = self.root.Basic.get_project_start_date()
-                    to_start_date, to_start_time = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    settings_dict['to_subset'] = 0
                 elif isinstance(start, datetime.datetime):
                     to_start = start
-                    to_start_date, to_start_time = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    settings_dict['to_start_date'], settings_dict['to_start_time'] = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
                 else:
                     to_start = start
-                    to_start_date, to_start_time = to_start.split(' ')
+                    settings_dict['to_start_date'], settings_dict['to_start_time'] = to_start.split(' ')
 
                 if end == 'project':
-                    to_end = self.root.Basic.get_project_end_date()
-                    to_end_date, to_end_time = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    pass
                 elif isinstance(end, datetime.datetime):
                     to_end = end
-                    to_end_date, to_end_time = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    settings_dict['to_end_date'], settings_dict['to_end_time'] = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
                 else:
                     to_end = end
-                    to_end_date, to_end_time = to_end.split(' ')
+                    settings_dict['to_end_date'], settings_dict['to_end_time'] = to_end.split(' ')
                 
                 # lag settings default to "automatic detection" for the value -1000.1
                 settings_with_special_defaults = [
@@ -1618,11 +1538,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ch4_min_lag, ch4_max_lag = co2_lags
                 gas4_min_lag, gas4_max_lag = gas4_lags
 
-                settings_dict = dict(
-                    to_start_date=to_start_date,
-                    to_start_time=to_start_time,
-                    to_end_date=to_end_date,
-                    to_end_time=to_end_time,
+                settings_dict.update(dict(
                     to_ch4_min_lag=ch4_min_lag,
                     to_ch4_max_lag=ch4_max_lag,
                     to_ch4_min_flux=ch4_min_flux,
@@ -1638,7 +1554,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     to_h2o_nclass=int(n_rh_classes),
                     to_pg_range=pg_range,
                     to_subset=to_subset
-                )
+                ))
 
                 return settings_dict
             def set_timelag_compensations(self,
@@ -2921,8 +2837,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 sa_subset = 1
                 if start == 'project':
                     sa_subset = 0
-                    sa_start = self.root.Basic.get_project_start_date()['start']
-                    sa_start_date, sa_start_time = sa_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
                 elif isinstance(start, datetime.datetime):
                     sa_start = start
                     sa_start_date, sa_start_time = sa_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
@@ -2931,18 +2845,18 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     sa_start_date, sa_start_time = sa_start.split(' ')
                     
                 if end == 'project':
-                    sa_end = self.root.Basic.get_project_end_date()['end']
-                    sa_end_date, sa_end_time = sa_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    pass
                 elif isinstance(end, datetime.datetime):
                     sa_end = end
                     sa_end_date, sa_end_time = sa_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
                 else:
                     sa_end = end
                     sa_end_date, sa_end_time = sa_end.split(' ')
-                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_date', sa_start_date)
-                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_time', sa_start_time)
-                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_date', sa_end_date)
-                self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_time', sa_end_time)
+                if not sa_subset:
+                    self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_date', sa_start_date)
+                    self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_time', sa_start_time)
+                    self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_date', sa_end_date)
+                    self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_time', sa_end_time)
                 self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_subset', str(sa_subset))
                 
                 if binned_cosp_dir is None:
