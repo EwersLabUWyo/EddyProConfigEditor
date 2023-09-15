@@ -824,14 +824,137 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def get_project_name(self):
             return dict(name=self.root.get('Project', 'project_title'))
         
+        def set_metadata(self, static:str|PathLike|Literal['embedded'], dynamic:str|PathLike|False=False):
+            """set the metadata information
+            
+            Parameters
+            ----------
+            static: Path to the static metadata file. Can either be a string, path, or 'embedded'. If 'embedded', use embedded metadata (.ghg files only)
+            dynamic: Path to an optional dynamic metadata file. Default False"""
+            history_args = ('Project', 'metadata', self.get_metadata)
+            self.root._add_to_history(*history_args, True)
+
+            if static == 'embedded':
+                assert self.root.get('Project', 'file_type') == '0', 'if using embedded metadata, file type must be .ghg'
+            assert (dynamic == False) or or_isinstance(dynamic, PathLike, str), 'dynamic should be False or a string or a path'
+
+            if static != 'embedded':
+                self.root.set('Project', 'proj_file', str(static))
+                self.root.set('Project', 'use_pfile', '1')
+            else:
+                self.root.set('Project', 'use_pfile', '0')
+
+            if dynamic:
+                self.root.set('Project', 'use_dyn_md_file', '1')
+                self.root.set('Project', 'dyn_metadata_file', str(dynamic))
+            else:
+                self.root.set('Project', 'use_dyn_md_file', '0')
+
+            self.root._add_to_history(*history_args)
+        def get_metadata(self)->dict:
+            if self.root.get('Project', 'use_pfile') == '0':
+                static = 'embdedded'
+            else:
+                static = self.root.get('Project', 'proj_file')
+            
+            if self.root.get('Project', 'use_dyn_metadata_file') == '1':
+                dynamic = self.root.get('dyn_metadata_file')
+            else:
+                dynamic = False
+            return dict(static=static, dynamic=dynamic)
+        
+        def set_biomet(self, mode:Literal['embedded', 'file', 'dir', 'none'], path:str|PathLike|None=None, extension:str|None=None, subfolders:bool=False):
+            """
+            set biomet file parameters
+            
+            Parameters
+            ----------
+            mode: one of 'embedded', 'file', 'dir', or 'none'. If 'embedded', use embedded biomet data in .ghg files. If 'file', use a single biomet file, with the path indicated in the path argument. If 'dir', use a directory of biomet files, with the directory path indicated in the 'path' argument, and the file extension indicated. If 'none', do not use any external biomet data.
+            path: if mode id 'file' or 'dir', the path to the file or dir. Leave blank for 'embedded'
+            extension: if mode='dir', the extension on the biomet files, such as 'csv', 'txt', 'dat', etc. Only required for mode='dir'. Do NOT prepend a '.' to the extension. E.g. '.csv' is INCORRECT, but 'csv' is correct.
+            subfolder: if mode='dir', whether to search in subfolders. Only required if mode='dir'"""
+            history_args = ('Project', 'biomet', self.get_biomet)
+            self.root._add_to_history(*history_args, True)
+
+            assert mode in ['embedded', 'file', 'dir', 'none'], "mode must be one of 'embedded', 'file', 'dir'"
+            if mode == 'embedded':
+                assert self.root.get('Project', 'file_type') == '0', 'if using embedded biomet data, file type must be .ghg'
+            if mode in ['file', 'dir']:
+                assert or_isinstance(path, str, PathLike), 'if mode if file or dir, path must be provided'
+            if mode == 'dir':
+                assert isinstance(extension, str), 'if mode if dir, extension must be provided'
+            
+            match mode:
+                case 'none':
+                    self.root.set('Project', 'use_biom', '0')
+                case 'embedded':
+                    self.root.set('Project', 'use_biom', '1')
+                case 'file':
+                    self.root.set('Project', 'use_biom', '2')
+                    self.root.set('Project', 'biom_file', str(path))
+                case 'dir':
+                    self.root.set('Project', 'use_biom', '3')
+                    self.root.set('Project', 'biom_dir', str(path))
+                    self.root.set('Project', 'biom_rec', str(int(bool(subfolders))))
+                    self.root.set('Project', 'biom_ext', '.' + extension)
+                
+            self.root._add_to_history(*history_args)
+        
+        def get_biomet(self):
+            i_mode = self.root.get('Project', 'use_biom')
+
+            match i_mode:
+                case '0':
+                    mode = 'none'
+                case '1':
+                    mode = 'embedded'
+                case '2':
+                    mode = 'file'
+                    path = self.root.get('Project', 'biom_file')
+                case '3':
+                    path = self.root.get('Project', 'biom_dir')
+                    subfolders = bool(int(self.root.get('Project', 'biom_rec')))
+                    extension = self.root.get('Project', 'biom_ext')[1:]
+            return dict(mode=mode, path=path, subfolders=subfolders, extension=extension)
+            
+        
     # --------------------Basic Settings Page-----------------------
     class _Basic:
         def __init__(self, root):
             self.root = root
 
+        def set_raw_data(
+                self, 
+                path:str|PathLike, 
+                fmt:str,
+                subfolders:bool=True, 
+                ):
+            """how to find the raw data
+            
+            Parameters
+            ----------
+            path: str or pathlike, path to data directory
+            format: how the timestamp is encoded in the file name. See eddypro documentation for details
+            """
+
+            history_args = ('Project', 'biomet', self.get_raw_data)
+            self.root._add_to_history(*history_args, True)
+
+            self.root.set('Project', 'file_prototype', fmt)
+            self.root.set('RawProcess_General', 'recurse', str(int(bool(subfolders))))
+            self.root.set('RawProcess_General', 'data_path', str(path))
+            
+            self.root._add_to_history(*history_args)
+        def get_raw_data(self):
+            fmt = self.root.get('Project', 'file_prototype')
+            subfolders = bool(int(self.root.get('RawProcess_General', 'recurse')))
+            path = self.root.get('RawProcess_General', 'data_path')
+
+            return dict(path=path, fmt=fmt, subfolders=subfolders)
+
+
         def set_out_path(self, d):
             """set the eddypro output path to directory d"""
-
             history_args = ('Basic', 'out_path', self.get_out_path)
             self.root._add_to_history(*history_args, True)
             self.root.set('Project', 'out_path', str(d))
@@ -855,11 +978,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 pr_start_date = start.strftime(r'%Y-%m-%d')
                 pr_start_time = start.strftime(r'%H:%M')
 
-            history_args = ('Basic', 'project_start_date', self.get_project_start_date)
-            self.root._add_to_history(*history_args, modify_only_if_first=True)
             self.root.set('Project', 'pr_start_date', str(pr_start_date))
             self.root.set('Project', 'pr_start_time', str(pr_start_time))
-            self.root._add_to_history(*history_args)
         def get_project_start_date(self) -> datetime.datetime:
             """retrieve form the config file the project start date."""
             out = dict()
@@ -887,11 +1007,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 pr_end_date = end.strftime(r'%Y-%m-%d')
                 pr_end_time = end.strftime(r'%H:%M')
 
-            history_args = ('Basic', 'project_end_date', self.get_project_end_date)
-            self.root._add_to_history(*history_args, modify_only_if_first=True)
             self.root.set('Project', 'pr_end_date', str(pr_end_date))
             self.root.set('Project', 'pr_end_time', str(pr_end_time))
-            self.root._add_to_history(*history_args)
+            
         def get_project_end_date(self) -> datetime.datetime:
             """retrieve form the config file the project end date."""
             out = dict()
@@ -905,19 +1023,35 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         def set_project_date_range(
             self,
-            start: str | datetime.datetime | None = None,
-            end: str | datetime.datetime | None = None
+            start: str | datetime.datetime | Literal['all_available'] = None,
+            end: str | datetime.datetime | Literal['all_available'] = None,
         ):
             """format yyyy-mm-dd HH:MM for strings"""
+            history_args = ('Basic', 'project_date_range', self.get_project_date_range)
+            self.root._add_to_history(*history_args, modify_only_if_first=True)
+            
             if end < start:
                 warnings.warn(f'Selected processing period is invalid, start comes after end: {str(start)} -> {str(end)}')
-            self.set_project_start_date(start)
-            self.set_project_end_date(end)
+            if (start == 'all_available') or (end == 'all_available'):
+                assert start == end, 'if using all_available, both start and end must be set to all_available.'
+            
+            if start == 'all_available':
+                self.root.set('Project', 'pr_subset', '0')
+            else:
+                self.root.set('Project', 'pr_subset', '1')
+                self.set_project_start_date(start)
+                self.set_project_end_date(end)
+            
+            self.root._add_to_history(*history_args)
+
         def get_project_date_range(self) -> dict:
-            """retrieve form the config file the project start and end dates. Output can be can be passed to set_date_range__ as kwargs"""
-            start = self.get_project_start_date()
-            end = self.get_project_end_date()
-            return dict(start=start['start'], end=end['end'])
+            """retrieve form the config file the project start and end dates. Output can be can be passed to set_project_date_range as kwargs"""
+            if self.root.get('Project', 'pr_subset', '0'):
+                start = end = 'all_available'
+            else:
+                start = self.get_project_start_date()['start']
+                end = self.get_project_end_date()['end']
+            return dict(start=start, end=end)
 
         def set_missing_samples_allowance(self, pct: int):
             # pct: value from 0 to 40%
@@ -1458,6 +1592,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     to_start = start
                     to_start_date, to_start_time = to_start.split(' ')
+
                 if end == 'project':
                     to_end = self.root.Basic.get_project_end_date()
                     to_end_date, to_end_time = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
@@ -2793,6 +2928,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     sa_start = start
                     sa_start_date, sa_start_time = sa_start.split(' ')
+                    
                 if end == 'project':
                     sa_end = self.root.Basic.get_project_end_date()['end']
                     sa_end_date, sa_end_time = sa_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
