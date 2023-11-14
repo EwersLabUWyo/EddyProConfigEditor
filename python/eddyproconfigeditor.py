@@ -448,6 +448,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         num_workers: int | None = None,
         file_duration: int | None = None,
         min_worker_timespan: int | None = None,
+        worker_windows: Sequence[datetime.datetime] | None = None
     ) -> None:
         """
         split this config file up into a set of .eddypro files, each handling a smaller time chunk that the main config.
@@ -461,6 +462,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
         min_worker_timespan: the minimum amount of data each worker can process, in days. If None (default), then set no minimum. Recommended if using methods that require aggregate data (see above)
+        worker_windows: list of the breakpoints between workers, as datetimes. Each worker will span from worker_timespans[i] to worker_timespans[i + 1]. So [2022, 2023, 2024] will generate 2 workers: 2022-2023, and 2023-2024. Override num_workers and min_worker_timespan.
 
         Notes
         -----
@@ -493,27 +495,33 @@ class EddyproConfigEditor(configparser.ConfigParser):
         #### determine how to allocate jobs to each worker ####
         start, end = self.Basic.get_project_date_range().values()
         assert start != 'all_available', 'when using to_eddypro_parallel, must explicitly set the project date range to something other than all_available with Basic.set_project_date_range.'
-        n_files = len(date_range(start, end, freq=f'{file_duration}min'))
-        # compute number of jobs (I think)
-        job_size = ceil(file_duration * n_files / num_workers)
-        # round job size up to nearest multiple of file_duration
-        job_size = f'{int(ceil(job_size/file_duration)*file_duration)}min'  
-        if min_worker_timespan is not None:
-            job_size = f'{int(min_worker_timespan)}d'
-        
-        job_starts = date_range(
-            start,
-            end - Timedelta(job_size),
-            freq=job_size)
-        if len(job_starts) <= 1: warnings.warn(f"job size too long. Submitting {len(job_starts)} jobs")
-        # dates are inclusive, so subtract 30min for file duration
-        job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
+
+        if worker_windows is not None:
+            for i in worker_windows: assert isinstance(i, datetime.datetime), 'worker starts must be a list of datetime.datetime'
+            job_starts = worker_windows[:-1]
+            job_ends = [start - Timedelta(file_duration) for start in worker_windows[1:]]
+        else:
+            n_files = len(date_range(start, end, freq=f'{file_duration}min'))
+            # compute number of jobs (I think)
+            job_size = ceil(file_duration * n_files / num_workers)
+            # round job size up to nearest multiple of file_duration
+            job_size = f'{int(ceil(job_size/file_duration)*file_duration)}min'  
+            if min_worker_timespan is not None:
+                job_size = f'{int(min_worker_timespan)}d'
+            
+            job_starts = date_range(
+                start,
+                end - Timedelta(job_size),
+                freq=job_size)
+            if len(job_starts) <= 1: warnings.warn(f"job size too long. Submitting {len(job_starts)} jobs")
+            # dates are inclusive, so subtract 30min for file duration
+            job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
 
         # give each project a unique id and file name
         proj_id = self.Basic.get_output_id()['output_id']
         project_ids = [
-            f'{proj_id}-{start}' for start in job_starts.strftime(
-                date_format=r"%Y%m%d%H%M")]
+            f'{proj_id}-{start.strftime(r"%Y%m%d%H%M")}' for start in job_starts
+        ]
         ini_fns = [
             ini_dir /
             f'{project_id}.eddypro' for project_id in project_ids]
@@ -522,7 +530,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         old_file_name = self.get('Project', 'file_name')
         old_out_path = self.Basic.get_out_path()
         project_id = self.Basic.get_output_id()
-
+        old_sa_settings = self.Adv.Spec.get_calculation()
+        old_timelag_settings = self.Adv.Proc.get_timelag_compensations()
+        old_tilt_settings = self.Adv.Proc.get_axis_rotations_for_tilt_correction()
         # write new files
         if not os.path.isdir(Path(ini_dir)):
             Path.mkdir(Path(ini_dir))
@@ -538,6 +548,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             # self.set('Project', 'pr_end_time', str(job_end_times[i]))
             self.Basic.set_output_id(project_ids[i])
             # self.set('Project', 'project_id', str(project_ids[i]))
+            if 'planar_fit' in old_tilt_settings['method']:
+                new_tilt_settings['configure_planar_fit_settings_kwargs']['']
 
             with open(fn, 'w') as configfile:
                 configfile.write(';EDDYPRO_PROCESSING\n')  # header line
@@ -934,7 +946,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             self.root.set('Project', 'pr_end_date', str(pr_end_date))
             self.root.set('Project', 'pr_end_time', str(pr_end_time))
             
-        def get_project_end_date(self) -> datetime.datetime:
+        def get_project_end_date(self) -> dict:
             """retrieve form the config file the project end date."""
             out = dict()
             end_date = self.root.get('Project', 'pr_end_date')
@@ -1317,8 +1329,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     configure_planar_fit_settings_kwargs = dict()
                     # case that a manual configuration is provided
                     pf_subset = int(self.root.get('RawProcess_TiltCorrection_Settings', 'pf_subset'))
-                    configure_planar_fit_settings_kwargs['pf_subset'] = pf_subset
-                    if pf_subset:
+                    if not pf_subset:
+                        configure_planar_fit_settings_kwargs['start'] = 'all_available'
+                        configure_planar_fit_settings_kwargs['end'] = 'all_available'
+                    else:
                         start_date = self.root.get(
                             'RawProcess_TiltCorrection_Settings', 'pf_start_date')
                         start_time = self.root.get(
@@ -2267,8 +2281,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'al_w_max',
                     str(w))
                 for name, v in zip(
-                    # eddypro calls gas4 n2o
-                    ['ts', 'co2', 'h2o', 'ch4', 'n2o'],
+                    # eddypro calls gas4 n2o and ts tson
+                    ['tson', 'co2', 'h2o', 'ch4', 'n2o'],
                     [ts, co2, h2o, ch4, gas4]
                 ):
                     vmin, vmax = v
@@ -2284,9 +2298,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 # filter
                 if filter_outliers:
                     self.root.set(
-                        'RawProcess_ParameterSettings', 'filter_al', '1')
+                        'RawProcess_Settings', 'filter_al', '1')
                     return
-                self.root.set('RawProcess_ParameterSettings', 'filter_al', '0')
+                self.root.set('RawProcess_Settings', 'filter_al', '0')
 
                 self.root._add_to_history(*history_args)
                 return
@@ -2307,8 +2321,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'al_w_max'))
 
                 for name, k in zip(
-                    # eddypro calls gas4 n2o
-                    ['ts', 'co2', 'h2o', 'ch4', 'n2o'],
+                    # eddypro calls gas4 n2o and ts tson
+                    ['tson', 'co2', 'h2o', 'ch4', 'n2o'],
                     ['ts', 'co2', 'h2o', 'ch4', 'gas4']
                 ):
                     vmin = float(
@@ -2322,7 +2336,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     out[k] = (vmin, vmax)
 
                 out['filter_outliers'] = bool(
-                    int(self.root.get('RawProcess_ParameterSettings', 'filter_al')))
+                    int(self.root.get('RawProcess_Settings', 'filter_al')))
 
                 return out
 
