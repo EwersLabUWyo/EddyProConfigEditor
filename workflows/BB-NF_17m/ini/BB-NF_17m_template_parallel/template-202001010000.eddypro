@@ -353,26 +353,26 @@ test_sr=1
 test_tl=0
 
 [RawProcess_TiltCorrection_Settings]
-pf_end_date=2023-11-09
-pf_end_time=10:42
+pf_end_date=2020-12-31
+pf_end_time=23:59
 pf_file=
 pf_fix=0
 pf_min_num_per_sec=30
 pf_mode=1
-pf_north_offset=0
-pf_start_date=2000-01-01
-pf_start_time=00:00
+pf_north_offset=0.0
+pf_start_date=2020-12-31
+pf_start_time=23:59
 pf_subset=0
 pf_u_min=0.5
 pf_w_max=0.5
 pf_sect_1_exclude=0
-pf_sect_1_width=90
+pf_sect_1_width=90.0
 pf_sect_2_exclude=0
-pf_sect_2_width=90
+pf_sect_2_width=90.0
 pf_sect_3_exclude=0
-pf_sect_3_width=90
+pf_sect_3_width=90.0
 pf_sect_4_exclude=0
-pf_sect_4_width=90
+pf_sect_4_width=90.0
 
 [RawProcess_TimelagOptimization_Settings]
 to_ch4_max_lag=-1000.1

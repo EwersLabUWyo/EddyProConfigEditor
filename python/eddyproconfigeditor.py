@@ -541,15 +541,39 @@ class EddyproConfigEditor(configparser.ConfigParser):
             self.Basic.set_out_path(out_path)
             self.set('Project', 'file_name', str(fn))
 
-            # self.set('Project', 'pr_start_date', str(job_start_dates[i]))
             self.Basic.set_project_date_range(job_starts[i], job_ends[i])
-            # self.set('Project', 'pr_end_date', str(job_end_dates[i]))
-            # self.set('Project', 'pr_start_time', str(job_start_times[i]))
-            # self.set('Project', 'pr_end_time', str(job_end_times[i]))
             self.Basic.set_output_id(project_ids[i])
-            # self.set('Project', 'project_id', str(project_ids[i]))
-            if 'planar_fit' in old_tilt_settings['method']:
-                new_tilt_settings['configure_planar_fit_settings_kwargs']['']
+
+            # modify spectral corrections time window
+            new_sa_settings = deepcopy(old_sa_settings)
+            if (
+                (old_sa_settings['start'] != 'project')
+                and ('binned_cosp_dir' not in old_sa_settings)
+            ):
+                new_sa_settings['start'] = 'project'
+                new_sa_settings['end'] = 'project'
+                self.Adv.Spec.set_calculation(**new_sa_settings)
+
+            # modify timelag settings timewindow
+            new_timelag_settings = deepcopy(old_timelag_settings)
+            if (
+                (old_timelag_settings['method'] == 'automatic_optimization')
+                and (old_timelag_settings['autoopt_file'] is None)
+                and (old_timelag_settings['configure_TimelagAutoOpt_kwargs']['start'] != 'project')
+            ):
+                new_timelag_settings['configure_TimelagAutoOpt_kwargs']['start'] = 'project'
+                new_timelag_settings['configure_TimelagAutoOpt_kwargs']['end'] = 'project'
+                self.Adv.Proc.set_timelag_compensations(**new_timelag_settings)
+
+            # modify planar fit settings time window
+            new_tilt_settings = deepcopy(old_tilt_settings)
+            if (
+                ('planar_fit' in old_tilt_settings['method'])
+                and (old_tilt_settings['pf_file'] is None)
+            ):
+                new_tilt_settings['configure_planar_fit_settings_kwargs']['start'] = job_ends[i]
+                new_tilt_settings['configure_planar_fit_settings_kwargs']['end'] = job_ends[i]
+                self.Adv.Proc.set_axis_rotations_for_tilt_correction(**new_tilt_settings)
 
             with open(fn, 'w') as configfile:
                 configfile.write(';EDDYPRO_PROCESSING\n')  # header line
@@ -559,12 +583,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
         self.set('Project', 'file_name', old_file_name)
         self.Basic.set_out_path(old_out_path)
         self.Basic.set_project_date_range(start, end)
-        # self.set('Project', 'pr_start_date', pr_start_date)
-        # self.set('Project', 'pr_end_date', pr_end_date)
-        # self.set('Project', 'pr_start_time', pr_start_time)
-        # self.set('Project', 'pr_end_time', pr_end_time)
-        self.Basic.set_output_id(project_id)
-        # self.set('Project', 'project_id', project_id)
+        self.Adv.Spec.set_calculation(**old_sa_settings)
+        self.Adv.Proc.set_timelag_compensations(**old_timelag_settings)
+        self.Adv.Proc.set_axis_rotations_for_tilt_correction(**old_tilt_settings)
+        self.Basic.set_output_id(**project_id)
 
         return
 
@@ -1657,8 +1679,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 if method == 'automatic_optimization':
                     configure_TimelagAutoOpt_kwargs = dict()
                     to_subset = int(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_subset'))
-                    configure_TimelagAutoOpt_kwargs['to_subset'] = to_subset
-                    if to_subset:
+                    if not to_subset:
+                        configure_TimelagAutoOpt_kwargs['start'] = 'project'
+                        configure_TimelagAutoOpt_kwargs['end'] = 'project'
+                    else:
                         # dates for autoopt fitting
                         start_date = self.root.get(
                             'RawProcess_TimelagOptimization_Settings', 'to_start_date')
@@ -2875,7 +2899,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     sa_end = end
                     sa_end_date, sa_end_time = sa_end.split(' ')
-                if not sa_subset:
+                
+                if sa_subset:
                     self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_date', sa_start_date)
                     self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_start_time', sa_start_time)
                     self.root.set('FluxCorrection_SpectralAnalysis_General', 'sa_end_date', sa_end_date)
@@ -3652,20 +3677,78 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             
 if __name__ == '__main__':
-    base = EddyproConfigEditor('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/investigate_eddypro/ini/base.eddypro')
+    pass
+    import argparse
+    from pathlib import Path
+    import sys
+    from datetime import datetime
 
-    ref = base.copy()
-    kwargs = dict(
-        w_max=0.9,
-        u_min=0.05,
-        num_per_sector_min=420,
-        north_offset=42,
-        sectors=[(1, 30), (0, 30), (0, 300)],
-        start='project',
-        end='project',
-        fix_method='CCW'
-    )
-    ref.Adv.Proc.set_axis_rotations_for_tilt_correction(
+    wd = Path('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/workflows/BB-NF_17m')
+    sys.path.append('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/python')
+    from eddyproconfigeditor import EddyproConfigEditor
+
+    arcc_wd = Path('/project/eddycovworkflow/afox18/Platinum-EddyPro7/workflow/BB-NF_17m')
+    data_dir = Path('/gscratch/afox18/eddycovworkflow/InputData/Chimney')
+    out_dir = Path('/gscratch/afox18/eddycovworkflow/ExpectedOutputs/Chimney/BB-NF/17m')
+
+    template = EddyproConfigEditor(wd / 'ini/BB-NF_17m_template.eddypro')
+
+    template.Proj.set_metadata(arcc_wd / 'ini/BB-NF_17m.metadata')
+    template.Proj.set_biomet(mode='dir', path=data_dir / 'biomet/BB-NF/EC/17m/EddyPro_Biomet', extension='dat', subfolders=False)
+    template.Proj.set_project_name('BB-NF_17m')
+
+    template.Basic.set_raw_data(path=data_dir / 'raw/BB-NF/EC/17m/Calibrated', fmt='yyyy_mm_dd_HHMM.dat', subfolders=False)
+    template.Basic.set_out_path(out_dir / 'Template')
+    template.Basic.set_project_date_range(start='2019-01-01 00:00', end='2024-12-31 23:30')
+    template.Basic.set_missing_samples_allowance(pct=10)
+    template.Basic.set_flux_averaging_interval(minutes=30)
+    template.Basic.set_north_reference(method='mag')
+    template.Basic.set_output_id(output_id='template')
+
+    template.Adv.Proc.set_wind_speed_measurement_offsets(0, 0, 0)
+    template.Adv.Proc.set_axis_rotations_for_tilt_correction(
         method='planar_fit',
-        configure_planar_fit_settings_kwargs=kwargs)
-    compare_configs(base.to_pandas(), ref.to_pandas())
+        configure_planar_fit_settings_kwargs=dict(
+            w_max=0.5,
+            u_min=0.5,
+            num_per_sector_min=30,
+            start='all_available',
+            end='all_available',
+            fix_method='CW',
+            north_offset=0,
+            sectors=[(False, 90)]*4
+        )
+    )
+    template.Adv.Proc.set_turbulent_fluctuations(detrend_method='block')
+    template.Adv.Proc.set_timelag_compensations(method='covariance_maximization_with_default')
+    template.Adv.Proc.set_compensation_of_density_fluctuations(
+        burba_method='multiple',
+        day_bot=[3.0935, -0.0819, 0.0018, -0.3601],
+        day_top=[0.5773, -0.0107, 0.0012, -0.0914],
+        day_spar=[0.7714, -0.0154, 0.0011, -0.1164],
+        night_bot=[2.2022, -0.122, 0, -0.3001],
+        night_top=[-0.2505, -0.0303, 0, 0.0556],
+        night_spar=[0.0219, -0.0361, 0, 0.0145]
+    )
+
+    template.Adv.Out.set_spectral_output(
+        binned_spectra=True,
+        binned_ogives=True,
+        ensemble_spectra=True,
+        full_spectra='none',
+        full_cospectra='none'
+    )
+    template.Adv.Out.set_chain_of_custody(
+        unprocessed='stats',
+        despiked='stats',
+        timelag_corrected='timeseries',
+        variables=['u', 'v', 'w', 'ts', 'co2', 'h2o', ]
+    )
+
+    template.to_eddypro(ini_file=wd / 'ini/BB-NF_17m_template.eddypro')
+    template.to_eddypro_parallel(
+        ini_dir=wd / 'ini/BB-NF_17m_template_parallel',
+        out_path=out_dir / 'Template_Parallel',
+        file_duration=1440,
+        worker_windows=[datetime(y, 1, 1, 0, 0, 0) for y in range(2019, 2025)]
+    )
