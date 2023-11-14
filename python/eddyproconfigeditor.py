@@ -492,6 +492,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         #### determine how to allocate jobs to each worker ####
         start, end = self.Basic.get_project_date_range().values()
+        assert start != 'all_available', 'when using to_eddypro_parallel, must explicitly set the project date range to something other than all_available with Basic.set_project_date_range.'
         n_files = len(date_range(start, end, freq=f'{file_duration}min'))
         # compute number of jobs (I think)
         job_size = ceil(file_duration * n_files / num_workers)
@@ -509,8 +510,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
 
         # give each project a unique id and file name
+        proj_id = self.Basic.get_output_id()['output_id']
         project_ids = [
-            f'worker{start}' for start in job_starts.strftime(
+            f'{proj_id}-{start}' for start in job_starts.strftime(
                 date_format=r"%Y%m%d%H%M")]
         ini_fns = [
             ini_dir /
@@ -519,7 +521,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         # save original settings
         old_file_name = self.get('Project', 'file_name')
         old_out_path = self.Basic.get_out_path()
-        project_id = self.Basic.get_project_id()
+        project_id = self.Basic.get_output_id()
 
         # write new files
         if not os.path.isdir(Path(ini_dir)):
@@ -820,11 +822,19 @@ class EddyproConfigEditor(configparser.ConfigParser):
             match i_mode:
                 case '0':
                     mode = 'none'
+                    path=None
+                    subfolders=None
+                    extension=None
                 case '1':
                     mode = 'embedded'
+                    path=None
+                    subfolders=None
+                    extension=None
                 case '2':
                     mode = 'file'
                     path = self.root.get('Project', 'biom_file')
+                    subfolders=None
+                    extension=None
                 case '3':
                     mode='dir'
                     path = self.root.get('Project', 'biom_dir')
@@ -866,7 +876,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
             path = self.root.get('RawProcess_General', 'data_path')
 
             return dict(path=path, fmt=fmt, subfolders=subfolders)
-
 
         def set_out_path(self, d):
             """set the eddypro output path to directory d"""
@@ -938,8 +947,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         def set_project_date_range(
             self,
-            start: str | datetime.datetime | Literal['all_available'] = None,
-            end: str | datetime.datetime | Literal['all_available'] = None,
+            start: str | datetime.datetime | Literal['all_available'] = 'all_available',
+            end: str | datetime.datetime | Literal['all_available'] = 'all_available',
         ):
             """format yyyy-mm-dd HH:MM for strings"""
             history_args = ('Basic', 'project_date_range', self.get_project_date_range)
@@ -961,7 +970,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         def get_project_date_range(self) -> dict:
             """retrieve form the config file the project start and end dates. Output can be can be passed to set_project_date_range as kwargs"""
-            if self.root.get('Project', 'pr_subset'):
+            if not bool(int(self.root.get('Project', 'pr_subset'))):
                 start = end = 'all_available'
             else:
                 start = self.get_project_start_date()['start']

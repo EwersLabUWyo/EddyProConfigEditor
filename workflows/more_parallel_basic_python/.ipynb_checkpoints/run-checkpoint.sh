@@ -27,8 +27,6 @@ eddypro_rp \
      "${PROJ_FILE}"
 
 # 2. run eddypro using the planar fit config file.
-# we need to run basic_workflow.py again to point eddypro the the specific planar fit file
-# that was generated. It will have a unique, timestamped name.
 python "${environment}/basic_workflow.py" --pf_file
 for NEW_PROJ_FILE in \
     "${environment}/ini/pf_covariance_maximization.eddypro" \
