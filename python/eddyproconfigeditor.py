@@ -1765,14 +1765,14 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         coeffs) == 4, 'Multiple regression coefficients must be a sequence of length four, representing (offset, Ta_gain, Rg_gain, U_gain)'
                     for option, value in zip(options, coeffs):
                         self.root.set(
-                            'RawProcess_Settings', option, str(value))
+                            'RawProcess_Settings', option, str(round(value, 4)))
                 elif estimation_method == 'simple':
                     options = [f'l_{name}_{i}' for i in ['gain', 'offset']]
                     assert len(
                         coeffs) == 2, 'Simple regression coefficients must be a sequence of length two, representing (gain, offset)'
                     for option, value in zip(options, coeffs):
                         self.root.set(
-                            'RawProcess_Settings', option, str(value))
+                            'RawProcess_Settings', option, str(round(value, 4)))
             def set_compensation_of_density_fluctuations(
                     self,
                     enable: bool = True,
