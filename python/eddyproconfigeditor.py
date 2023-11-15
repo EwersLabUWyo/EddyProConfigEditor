@@ -448,7 +448,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         num_workers: int | None = None,
         file_duration: int | None = None,
         min_worker_timespan: int | None = None,
-        worker_windows: Sequence[datetime.datetime] | None = None
+        worker_windows: Sequence[datetime.datetime] | None = None,
+        subset_pf_dates: bool = True,
+        subset_sa_dates: bool = True
     ) -> None:
         """
         split this config file up into a set of .eddypro files, each handling a smaller time chunk that the main config.
@@ -463,6 +465,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
         min_worker_timespan: the minimum amount of data each worker can process, in days. If None (default), then set no minimum. Recommended if using methods that require aggregate data (see above)
         worker_windows: list of the breakpoints between workers, as datetimes. Each worker will span from worker_timespans[i] to worker_timespans[i + 1]. So [2022, 2023, 2024] will generate 2 workers: 2022-2023, and 2023-2024. Override num_workers and min_worker_timespan.
+        subset_pf_dates: if a planar fit is to computed on the data (without the use of a planar fit file), set this to True to have each instance of EddyPro only compute the planar fit for its individual window. Set to False to have each instance of EddyPro compute the planar fit on all files.
+        subset_sa_dates: same as for subset_pf_dates, but for spectral computation.
 
         Notes
         -----
@@ -548,7 +552,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
             new_sa_settings = deepcopy(old_sa_settings)
             if (
                 (old_sa_settings['start'] != 'project')
-                and ('binned_cosp_dir' not in old_sa_settings)
+                and ('binned_cosp_dir' not in old_sa_settings
+                     or subset_sa_dates)
             ):
                 new_sa_settings['start'] = 'project'
                 new_sa_settings['end'] = 'project'
@@ -570,9 +575,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if (
                 ('planar_fit' in old_tilt_settings['method'])
                 and (old_tilt_settings['pf_file'] is None)
+                and (old_tilt_settings['configure_planar_fit_settings_kwargs']['start'] in ['project', 'all_available']
+                     or subset_pf_dates)
             ):
-                new_tilt_settings['configure_planar_fit_settings_kwargs']['start'] = job_ends[i]
-                new_tilt_settings['configure_planar_fit_settings_kwargs']['end'] = job_ends[i]
+                new_tilt_settings['configure_planar_fit_settings_kwargs']['start'] = 'project'
+                new_tilt_settings['configure_planar_fit_settings_kwargs']['end'] = 'project'
                 self.Adv.Proc.set_axis_rotations_for_tilt_correction(**new_tilt_settings)
 
             with open(fn, 'w') as configfile:
@@ -1231,6 +1238,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             settings_dict['pf_end_date'] = end_date
                             settings_dict['pf_end_time'] = end_time
                     case _:
+                        settings_dict['pf_subset'] = 1
                         if isinstance(start, datetime.datetime):
                             start = start.strftime(r'%Y-%m-%d %H:%M')
                         if isinstance(end, datetime.datetime):
@@ -3546,10 +3554,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     zero_sp = list(set(all_cospectra).difference(full_cospectra))
                     one_sp = full_cospectra
                 for s in zero_sp:
-                    if s == 'w/gas4': s = 'n2o'
+                    if s == 'w/gas4': s = 'w/n2o'
                     self.root.set('RawProcess_Settings', f'out_full_cosp_w_{s[2:]}', '0')
                 for s in one_sp:
-                    if s == 'w/gas4': s = 'n2o'
+                    if s == 'w/gas4': s = 'w/n2o'
                     self.root.set('RawProcess_Settings', f'out_full_cosp_w_{s[2:]}', '1')
                 
                 self.root._add_to_history(*history_args)
@@ -3687,7 +3695,7 @@ if __name__ == '__main__':
     sys.path.append('/Users/alex/Documents/Work/UWyo/Research/Flux Pipeline Project/Eddypro-ec-testing/python')
     from eddyproconfigeditor import EddyproConfigEditor
 
-    arcc_wd = Path('/project/eddycovworkflow/afox18/Platinum-EddyPro7/workflow/BB-NF_17m')
+    arcc_wd = Path('/project/eddycovworkflow/afox18/Platinum-EddyPro7/workflows/BB-NF_17m')
     data_dir = Path('/gscratch/afox18/eddycovworkflow/InputData/Chimney')
     out_dir = Path('/gscratch/afox18/eddycovworkflow/ExpectedOutputs/Chimney/BB-NF/17m')
 
@@ -3699,7 +3707,7 @@ if __name__ == '__main__':
 
     template.Basic.set_raw_data(path=data_dir / 'raw/BB-NF/EC/17m/Calibrated', fmt='yyyy_mm_dd_HHMM.dat', subfolders=False)
     template.Basic.set_out_path(out_dir / 'Template')
-    template.Basic.set_project_date_range(start='2019-01-01 00:00', end='2024-12-31 23:30')
+    template.Basic.set_project_date_range(start='2019-01-01 00:00', end='2023-12-31 23:30')
     template.Basic.set_missing_samples_allowance(pct=10)
     template.Basic.set_flux_averaging_interval(minutes=30)
     template.Basic.set_north_reference(method='mag')
@@ -3712,8 +3720,8 @@ if __name__ == '__main__':
             w_max=0.5,
             u_min=0.5,
             num_per_sector_min=30,
-            start='all_available',
-            end='all_available',
+            start='project',
+            end='project',
             fix_method='CW',
             north_offset=0,
             sectors=[(False, 90)]*4
