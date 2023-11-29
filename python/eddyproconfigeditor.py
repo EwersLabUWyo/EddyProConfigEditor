@@ -1776,7 +1776,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
             def set_compensation_of_density_fluctuations(
                     self,
                     enable: bool = True,
-                    
                     burba_method: Literal['simple', 'multiple'] | None = None,
                     day_bot: Sequence | Literal['revert'] | None = None,
                     day_top: Sequence | Literal['revert'] | None = None,
