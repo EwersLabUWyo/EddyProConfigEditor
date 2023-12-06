@@ -445,12 +445,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ini_dir: str | PathLike[str],
         out_path: str | PathLike[str],
         metadata_fn: str | PathLike[str] | None = None,
-        num_workers: int | None = None,
         file_duration: int | None = None,
-        min_worker_timespan: int | None = None,
         worker_windows: Sequence[datetime.datetime] | None = None,
         subset_pf_dates: bool = True,
-        subset_sa_dates: bool = True
+        subset_sa_dates: bool = True,
+        pf_file: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None
     ) -> None:
         """
         split this config file up into a set of .eddypro files, each handling a smaller time chunk that the main config.
@@ -467,6 +466,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         worker_windows: list of the breakpoints between workers, as datetimes. Each worker will span from worker_timespans[i] to worker_timespans[i + 1]. So [2022, 2023, 2024] will generate 2 workers: 2022-2023, and 2023-2024. Override num_workers and min_worker_timespan.
         subset_pf_dates: if a planar fit is to computed on the data (without the use of a planar fit file), set this to True to have each instance of EddyPro only compute the planar fit for its individual window. Set to False to have each instance of EddyPro compute the planar fit on all files.
         subset_sa_dates: same as for subset_pf_dates, but for spectral computation.
+        pf_file: a single planar fit file or a list of planar fit files to use. If multiple planar fit files are provided, they must be provided with worker windows, and must match 1:1 onto each worker.
 
         Notes
         -----
@@ -493,34 +493,19 @@ class EddyproConfigEditor(configparser.ConfigParser):
             metadata.read(metadata_fn)
             file_duration = int(metadata['Timing']['file_duration'])
 
-        if num_workers is None:
-            num_workers = max(multiprocessing.cpu_count() - 1, 1)
-
         #### determine how to allocate jobs to each worker ####
         start, end = self.Basic.get_project_date_range().values()
         assert start != 'all_available', 'when using to_eddypro_parallel, must explicitly set the project date range to something other than all_available with Basic.set_project_date_range.'
 
-        if worker_windows is not None:
-            for i in worker_windows: assert isinstance(i, datetime.datetime), 'worker starts must be a list of datetime.datetime'
-            job_starts = worker_windows[:-1]
-            job_ends = [start - Timedelta(file_duration) for start in worker_windows[1:]]
-        else:
-            n_files = len(date_range(start, end, freq=f'{file_duration}min'))
-            # compute number of jobs (I think)
-            job_size = ceil(file_duration * n_files / num_workers)
-            # round job size up to nearest multiple of file_duration
-            job_size = f'{int(ceil(job_size/file_duration)*file_duration)}min'  
-            if min_worker_timespan is not None:
-                job_size = f'{int(min_worker_timespan)}d'
-            
-            job_starts = date_range(
-                start,
-                end - Timedelta(job_size),
-                freq=job_size)
-            if len(job_starts) <= 1: warnings.warn(f"job size too long. Submitting {len(job_starts)} jobs")
-            # dates are inclusive, so subtract 30min for file duration
-            job_ends = job_starts + Timedelta(job_size) - Timedelta(file_duration)
+        for i in worker_windows: 
+            assert isinstance(i, datetime.datetime), 'worker starts must be a list of datetime.datetime'
+        job_starts = worker_windows[:-1]
+        job_ends = [start - Timedelta(file_duration) for start in worker_windows[1:]]
 
+        if pf_file is not None:
+            pf_file = list(pf_file)
+            if len(pf_file) == 1: pf_file *= len(worker_windows) - 1
+            assert len(pf_file) == len(worker_windows) - 1, 'planar fit files must match 1:1 with workers'
         # give each project a unique id and file name
         proj_id = self.Basic.get_output_id()['output_id']
         project_ids = [
@@ -544,7 +529,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
             # self.set('Project', 'out_path', str(out_path))
             self.Basic.set_out_path(out_path)
             self.set('Project', 'file_name', str(fn))
-
             self.Basic.set_project_date_range(job_starts[i], job_ends[i])
             self.Basic.set_output_id(project_ids[i])
 
@@ -581,7 +565,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 new_tilt_settings['configure_planar_fit_settings_kwargs']['start'] = 'project'
                 new_tilt_settings['configure_planar_fit_settings_kwargs']['end'] = 'project'
                 self.Adv.Proc.set_axis_rotations_for_tilt_correction(**new_tilt_settings)
-
+            if pf_file is not None:
+                method = self.Adv.Proc.get_axis_rotations_for_tilt_correction()['method']
+                self.Adv.Proc.set_axis_rotations_for_tilt_correction(method=method, pf_file=pf_file[i])
             with open(fn, 'w') as configfile:
                 configfile.write(';EDDYPRO_PROCESSING\n')  # header line
                 self.write(fp=configfile, space_around_delimiters=False)
@@ -1186,7 +1172,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 """
 
                 # check that inputs conform to requirements
-                assert in_range(w_max, '[0.5, 10.0]'), 'w_max must be between 0.5 and 10.0'
+                assert in_range(w_max, '[0.1, 10.0]'), 'w_max must be between 0.1 and 10.0'
                 assert in_range(u_min, '[0.001, 10.0]'), 'u_min must be between 0.001 and 10.0'
                 assert fix_method in ['CW', 'CCW', 'double_rotations', 0, 1, 2], 'fix_method must be one of CW (0), CCW (1), double_rotations (2)'
                 assert in_range(num_per_sector_min, '[1, 10_000]'), 'num_per_sector_min must be between 1 and 10_000'
