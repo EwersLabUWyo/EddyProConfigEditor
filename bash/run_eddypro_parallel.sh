@@ -1,6 +1,11 @@
 #!/bin/bash
 
 # Usage: ./run_eddypro.sh $system $environment $PROJ_FILE $max_retries
+# this bash script gets around the random Fortran runtime errors and eddypro fatal errors
+# that are randomly thrown when running eddypro in parallel on the same dataset.
+# it's a bit of a kludge fix, and works by running eddypro, then if it fails, waiting a random
+# amount of time before trying again. Once a maximum number of retries is reached, the script gives
+# up and accepts its fate.
 
 system=$1
 environment=$2
@@ -16,8 +21,7 @@ while true; do
     # run eddypro, parse output
     # stop parsing if we get a runtime error
     # stop parsing if we get a fatal error
-    # do this as a process substitution to avoid making another shell, so that we can
-    # use found_rte and found_fe elsewhere.
+    # do this as a process substitution to avoid making another shell
     while IFS= read -r line; do
         echo "$line"
         if [[ "$line" =~ "runtime error" ]]; then
@@ -27,10 +31,11 @@ while true; do
             found_fe=true
             break
         fi   
+    # 2>&1 captures both stderr and stdout
     done < <(eddypro_rp -s "$system" -m desktop -e "$environment" $PROJ_FILE 2>&1)
     # fatal error
 
-    # runtime error means we need to retry.
+    # retry if we get an error
     if [ "$found_rte" = true ]; then
         ((n_runs++))
         sleep $((RANDOM % 10 + 1))
@@ -51,7 +56,7 @@ while true; do
     fi
 
     # too many retries
-    if [ "$n_runs" -ge "$max_retries" ]; then
+    if [ "$n_runs" -gt "$max_retries" ]; then
         echo
         echo ">>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<"
         echo ">>>>>Too many retries! exiting....<<<<<"
@@ -66,17 +71,13 @@ if [ "$kill" = true ]; then
     exit 1
 fi
 
+# redo for eddypro_fcc
 sleep $((RANDOM % 10 + 1))
 n_runs=0
 found_rte=false
 found_fe=false
 kill=false
 while true; do
-    # run eddypro, parse output
-    # stop parsing if we get a runtime error
-    # stop parsing if we get a fatal error
-    # do this as a process substitution to avoid making another shell, so that we can
-    # use found_rte and found_fe elsewhere.
     while IFS= read -r line; do
         echo "$line"
         if [[ "$line" =~ "runtime error" ]]; then
@@ -87,9 +88,7 @@ while true; do
             break
         fi   
     done < <(eddypro_fcc -s "$system" -m desktop -e "$environment" $PROJ_FILE 2>&1)
-    # fatal error
 
-    # runtime error means we need to retry.
     if [ "$found_rte" = true ]; then
         ((n_runs++))
         sleep $((RANDOM % 10 + 1))
@@ -104,13 +103,11 @@ while true; do
         echo ">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
         echo ">>>>>Encountered Fatal Error. Retrying<<<<<"
         echo ">>>>>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
-    # no runtime or fatal error: move on to fcc
     else
         break
     fi
 
-    # too many retries
-    if [ "$n_runs" -ge "$max_retries" ]; then
+    if [ "$n_runs" -gt "$max_retries" ]; then
         echo
         echo ">>>>>>>>>>>>>>>>>>>><<<<<<<<<<<<<<<<<<<"
         echo ">>>>>Too many retries! exiting....<<<<<"
@@ -120,7 +117,6 @@ while true; do
     fi
 done
 
-# exit if fatal error
 if [ "$kill" = true ]; then
     exit 1
 fi
