@@ -6,6 +6,10 @@
 # it's a bit of a kludge fix, and works by running eddypro, then if it fails, waiting a random
 # amount of time before trying again. Once a maximum number of retries is reached, the script gives
 # up and accepts its fate.
+# Author: Alexander Fox
+# Copyright 2023
+# License: GPL3
+# Email: afox18@uwyo.edu
 
 system=$1
 environment=$2

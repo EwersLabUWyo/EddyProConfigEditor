@@ -1,21 +1,3 @@
-import configparser
-from pathlib import Path
-from typing import Literal
-import datetime
-from os import PathLike
-import os
-from collections.abc import Sequence
-import multiprocessing
-from math import ceil
-import warnings
-import tempfile
-from copy import deepcopy
-from time import perf_counter as timer
-from collections.abc import Sequence
-# from time import sleep
-# import sys
-
-from pandas import date_range, Timedelta, DataFrame
 """
 TODO
 Settings to add
@@ -141,11 +123,30 @@ Calculate spectral information (do not apply yet)
 Flux computation
 
 Note: If Ibrom, Fratini, or Horst low-pass filtering is requested, that will be performed in eddypro_fcc, in a final step.
-
-
-
-
 """
+
+import configparser
+from pathlib import Path
+from typing import Literal
+import datetime
+from os import PathLike
+import os
+from collections.abc import Sequence
+import multiprocessing
+from math import ceil
+import warnings
+import tempfile
+from copy import deepcopy
+from time import perf_counter as timer
+from collections.abc import Sequence
+
+from pandas import date_range, Timedelta, DataFrame
+
+__author__ = "Alexander Fox"
+__copyright__ = "Copyright 2023"
+__license__ = "GPL3"
+__email__ = "afox18@uwyo.edu"
+
 
 def or_isinstance(object, *types):
     """helper function to chain together multiple isinstance arguments
