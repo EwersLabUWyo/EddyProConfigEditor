@@ -139,6 +139,7 @@ import tempfile
 from copy import deepcopy
 from time import perf_counter as timer
 from collections.abc import Sequence
+import shutil
 
 from pandas import date_range, Timedelta, DataFrame
 
@@ -443,8 +444,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
     def to_eddypro_parallel(
         self,
-        ini_dir: str | PathLike[str],
+        environment_parent: str | PathLike[str],
         out_path: str | PathLike[str],
+        ep_bin: str | PathLike[str],
         metadata_fn: str | PathLike[str] | None = None,
         file_duration: int | None = None,
         worker_windows: Sequence[datetime.datetime] | None = None,
@@ -458,8 +460,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         
         Parameters
         ----------
-        ini_dir: the directory to output configured .eddypro files to. Does not have to exist.
+        environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
         out_path: the path to direct eddypro to write results to.
+        ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment.
         metadata_fn: path to a static .metadata file for this project. Must be provided if file_duration is None.
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
@@ -512,9 +515,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
         project_ids = [
             f'{proj_id}-{start.strftime(r"%Y%m%d%H%M")}' for start in job_starts
         ]
-        ini_fns = [
-            ini_dir /
-            f'{project_id}.eddypro' for project_id in project_ids]
+        ini_fns = [environment_parent / project_id / 'ini' / 'processing.eddypro' for project_id in project_ids]
+        for fn in ini_fns: fn.parent.mkdir(exist_ok=True, parents=True)
 
         # save original settings
         old_file_name = self.get('Project', 'file_name')
@@ -524,8 +526,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
         old_timelag_settings = self.Adv.Proc.get_timelag_compensations()
         old_tilt_settings = self.Adv.Proc.get_axis_rotations_for_tilt_correction()
         # write new files
-        if not os.path.isdir(Path(ini_dir)):
-            Path.mkdir(Path(ini_dir))
         for i, fn in enumerate(ini_fns):
             # self.set('Project', 'out_path', str(out_path))
             self.Basic.set_out_path(out_path)
@@ -569,9 +569,17 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if pf_file is not None:
                 method = self.Adv.Proc.get_axis_rotations_for_tilt_correction()['method']
                 self.Adv.Proc.set_axis_rotations_for_tilt_correction(method=method, pf_file=pf_file[i])
+            
+            # write to file
             with open(fn, 'w') as configfile:
                 configfile.write(';EDDYPRO_PROCESSING\n')  # header line
                 self.write(fp=configfile, space_around_delimiters=False)
+
+            # copy bin to environment
+            shutil.copy(ep_bin, fn.parent.parent / 'bin', dirs_exist_ok=True)
+
+            # create a tmp directory
+            (fn.parent.parent / 'tmp').mkdir(exist_ok=True)
 
         # revert to original
         self.set('Project', 'file_name', old_file_name)
@@ -3741,7 +3749,7 @@ if __name__ == '__main__':
 
     template.to_eddypro(ini_file=wd / 'ini/BB-NF_17m_template.eddypro')
     template.to_eddypro_parallel(
-        ini_dir=wd / 'ini/BB-NF_17m_template_parallel',
+        environment_parent=wd / 'ini/BB-NF_17m_template_parallel',
         out_path=out_dir / 'Template_Parallel',
         file_duration=1440,
         worker_windows=[datetime(y, 1, 1, 0, 0, 0) for y in range(2019, 2025)]

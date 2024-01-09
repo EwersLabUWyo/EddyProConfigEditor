@@ -11,6 +11,12 @@
 # License: GPL3
 # Email: afox18@uwyo.edu
 
+
+####
+# Issues: sometimes, a fatal error is detected, even when no fatal error occurs????
+####
+
+
 system=$1
 environment=$2
 PROJ_FILE=$3
