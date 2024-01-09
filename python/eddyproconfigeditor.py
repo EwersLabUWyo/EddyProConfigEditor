@@ -474,6 +474,27 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         Notes
         -----
+        On how to interpret the environment_parent, and ep_bin arguments: each instance of eddypro needs (1) a unique .eddypro
+        processing file and (2) a unique eddypro executable. This function will addresses this by creating a new environment folder for each
+        instance of eddypro, and places a new executable file and .eddypro file in each one. Here is an example of what this function will generate
+        when instructed to create two workers in parallel, one processing 20220101-20221231, and one processing 20230101-20231231
+
+            ./environment_parent
+            |-- environment_20220101
+            |  |-- bin
+            |  |  |-- eddypro_rp
+            |  |  |-- eddypro_fcc
+            |  |-- ini
+            |  |  |-- processing.eddypro
+            |  |-- tmp
+            |-- environment_20230101
+            |  |-- bin
+            |  |  |-- eddypro_rp
+            |  |  |-- eddypro_fcc
+            |  |-- ini
+            |  |  |-- processing.eddypro
+            |  |-- tmp
+
         This method will check to make sure that the file has been set up in a valid manner.
         Specifically, it will check to make sure that the project start and end times are valid.
         If any other time-specific settings are being used, it will check those for validity too,
@@ -576,9 +597,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.write(fp=configfile, space_around_delimiters=False)
 
             # copy bin to environment
-            shutil.copy(ep_bin, fn.parent.parent / 'bin', dirs_exist_ok=True)
+            shutil.copytree(ep_bin, fn.parent.parent / 'bin', dirs_exist_ok=True)
 
             # create a tmp directory
+            print(fn.parent.parent)
             (fn.parent.parent / 'tmp').mkdir(exist_ok=True)
 
         # revert to original
