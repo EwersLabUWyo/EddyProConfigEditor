@@ -446,7 +446,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         self,
         environment_parent: str | PathLike[str],
         out_path: str | PathLike[str],
-        ep_bin: str | PathLike[str],
+        ep_bin: None | str | PathLike[str] = None,
         metadata_fn: str | PathLike[str] | None = None,
         file_duration: int | None = None,
         worker_windows: Sequence[datetime.datetime] | None = None,
@@ -462,7 +462,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ----------
         environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
         out_path: the path to direct eddypro to write results to.
-        ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment.
+        ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
         metadata_fn: path to a static .metadata file for this project. Must be provided if file_duration is None.
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
@@ -597,10 +597,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 self.write(fp=configfile, space_around_delimiters=False)
 
             # copy bin to environment
-            shutil.copytree(ep_bin, fn.parent.parent / 'bin', dirs_exist_ok=True)
+            if ep_bin is not None:
+                shutil.copytree(ep_bin, fn.parent.parent / 'bin', dirs_exist_ok=True)
+            else:
+                (fn.parent.parent / 'bin').mkdir(exist_ok=True)
 
             # create a tmp directory
-            print(fn.parent.parent)
             (fn.parent.parent / 'tmp').mkdir(exist_ok=True)
 
         # revert to original
