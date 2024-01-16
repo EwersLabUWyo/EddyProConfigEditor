@@ -453,26 +453,29 @@ class EddyproConfigEditor(configparser.ConfigParser):
         worker_windows: Sequence[datetime.datetime] | None = None,
         subset_pf_dates: bool = True,
         subset_sa_dates: bool = True,
-        pf_file: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None
+        pf_file: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None,
+        sa_dir: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None
     ) -> None:
         """
-        split this config file up into a set of .eddypro files, each handling a smaller time chunk that the main config.
-        all .eddypro files will be identical except in their project IDs, file names, and start/end dates.
+        Split up a config file by time into multiple identical files, each covering a shorter time duration than the original file. In many circumatances, this can be used
+        to run eddypro in a pseudo-parallel configuration, speeding up processing times by orders of magnitude. However, this comes with some caveats and traps that can 
+        introduce errors into your final fluxes if you aren't careful. Some processes inside eddypro require long, continuous datasets to produce quality results: the planar fit method,
+        some spectral analysis methods, and the automatic time lag optimization methods require at least 2 weeks to 1 month of continuous data to work properly, and ideally more. 
+        This function can work around these issues, but needs user guidance on how to properly do that.
         
         Parameters
         ----------
         environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
         out_parent: Similar to the environment parent directoy. Sub-folders will be created within out_parent to contain output files from each worker.
-        ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
         metadata_fn: path to a static .metadata file for this project.
         dynamic_metadata_fn: same as metadata_fn, except for dynamic metadata. Can be None.
-        num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
+        ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
-        min_worker_timespan: the minimum amount of data each worker can process, in days. If None (default), then set no minimum. Recommended if using methods that require aggregate data (see above)
         worker_windows: list of the breakpoints between workers, as datetimes. Each worker will span from worker_timespans[i] to worker_timespans[i + 1]. So [2022, 2023, 2024] will generate 2 workers: 2022-2023, and 2023-2024. Override num_workers and min_worker_timespan.
-        subset_pf_dates: if a planar fit is to computed on the data (without the use of a planar fit file), set this to True to have each instance of EddyPro only compute the planar fit for its individual window. Set to False to have each instance of EddyPro compute the planar fit on all files.
-        subset_sa_dates: same as for subset_pf_dates, but for spectral computation.
-        pf_file: a single planar fit file or a list of planar fit files to use. If multiple planar fit files are provided, they must be provided with worker windows, and must match 1:1 onto each worker.
+        subset_pf_dates: if True (default), each worker will compute a planar fit only on the dataset allocated to it by the worker window. If False, each worker will compute a planar fit using all data in the raw data directory. This parameter is ignored if a planar fit is not required, or if pf_files are provided. Note that setting to False will drastically increase computation time. Be aware that setting this option to True when worker windows are shorter than 1 month. This option should not be set to true when worker windows are shorter than 2 weeks.
+        subset_sa_dates: same as for subset_pf_dates, but for spectral computation. At least one month of data is required for a robust spectral assessment, so this option should not be set to True when each worker window covers less than one month of data.
+        pf_file: a single planar fit file or a list of planar fit files to use. If multiple planar fit files are provided, they must be provided with worker windows, and must match 1:1 onto each worker. This argument overrides pf_subset.
+        sa_dir: a directory or a list of directories that contain binned (co)spectra files relevant to this run. Similarly to pf_file, if multiple directories are provided, they much match 1:1 onto each worker. This argument overrides sa_subset.
 
         Notes
         -----
@@ -529,9 +532,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             * use methods that do not require long time spans of data.
         """
 
+        
         # get file duration
         if file_duration is None:
-            assert metadata_fn is not None, 'metadata_fn must be provided'
             metadata = configparser.ConfigParser()
             metadata.read(metadata_fn)
             file_duration = int(metadata['Timing']['file_duration'])
@@ -550,6 +553,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
             pf_file = list(pf_file)
             if len(pf_file) == 1: pf_file *= len(worker_windows) - 1
             assert len(pf_file) == len(worker_windows) - 1, 'planar fit files must match 1:1 with workers'
+        # make sure that the number of sa files, if provided, matches the number of workers
+        if sa_dir is not None:
+            sa_dir = list(sa_dir)
+            if len(sa_dir) == 1: sa_dir *= len(worker_windows) - 1
+            assert len(sa_dir) == len(worker_windows) - 1, 'spectral analysis directories must match 1:1 with workers'
         
         #### file organization stuff ####
         # give each project a unique id and file name
@@ -601,6 +609,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 new_sa_settings['start'] = 'project'
                 new_sa_settings['end'] = 'project'
                 self.Adv.Spec.set_calculation(**new_sa_settings)
+            if sa_dir is not None:
+                self.Adv.Spec.set_calculation(binned_cosp_dir=sa_dir[i])
 
             # modify timelag settings timewindow
             new_timelag_settings = deepcopy(old_timelag_settings)
