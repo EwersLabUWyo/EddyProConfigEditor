@@ -1,3 +1,12 @@
-* follow gerardo's directions
+* follow gerardo's directions: each processing.eddypro file needs its own environment. This means that you need the following:
+    * processing.eddypro
+    * eddypro_fcc
+    * eddypro_rp
+    * static.metadata
+    * dynamic.metadata
+    * planar fit file
+    * spectral assessment
+    * binned cospectra! I think
+    * This is probably best done by asking for a template directory that contains all of this stuff, that can be simply copied.
 * improve documentation
 * include a test dataset with a walkthrough on how to run it.

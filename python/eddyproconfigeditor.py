@@ -446,8 +446,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         self,
         environment_parent: str | PathLike[str],
         out_parent: str | PathLike[str],
+        metadata_fn: str | PathLike[str],
+        dynamic_metadata_fn: str | PathLike[str] | None = None,
         ep_bin: None | str | PathLike[str] = None,
-        metadata_fn: str | PathLike[str] | None = None,
         file_duration: int | None = None,
         worker_windows: Sequence[datetime.datetime] | None = None,
         subset_pf_dates: bool = True,
@@ -463,7 +464,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
         environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
         out_parent: Similar to the environment parent directoy. Sub-folders will be created within out_parent to contain output files from each worker.
         ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
-        metadata_fn: path to a static .metadata file for this project. Must be provided if file_duration is None.
+        metadata_fn: path to a static .metadata file for this project.
+        dynamic_metadata_fn: same as metadata_fn, except for dynamic metadata. Can be None.
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
         file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
         min_worker_timespan: the minimum amount of data each worker can process, in days. If None (default), then set no minimum. Recommended if using methods that require aggregate data (see above)
@@ -572,12 +574,23 @@ class EddyproConfigEditor(configparser.ConfigParser):
         old_tilt_settings = self.Adv.Proc.get_axis_rotations_for_tilt_correction()
         # write new files
         for i, fn in enumerate(ini_fns):
-            # self.set('Project', 'out_path', str(out_path))
+            # make a collection of new environments
+            static = fn.parent / 'static.metadata'
+            shutil.copy(metadata_fn, static)
+            if dynamic_metadata_fn is not None:
+                dynamic = fn.parent / 'dynamic.metadata'
+                shutil.copy(dynamic_metadata_fn, dynamic)
+            else:
+                dynamic = False
+            self.Proj.set_metadata(static=static, dynamic=dynamic)
+            
             self.Basic.set_out_path(out_dirs[i])
+            
             self.set('Project', 'file_name', str(fn))
-            self.Basic.set_project_date_range(job_starts[i], job_ends[i])
             self.Basic.set_output_id(project_ids[i])
 
+            self.Basic.set_project_date_range(job_starts[i], job_ends[i])
+            
             # modify spectral corrections time window
             new_sa_settings = deepcopy(old_sa_settings)
             if (
