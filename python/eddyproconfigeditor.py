@@ -445,7 +445,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
     def to_eddypro_parallel(
         self,
         environment_parent: str | PathLike[str],
-        out_path: str | PathLike[str],
+        out_parent: str | PathLike[str],
         ep_bin: None | str | PathLike[str] = None,
         metadata_fn: str | PathLike[str] | None = None,
         file_duration: int | None = None,
@@ -461,7 +461,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         Parameters
         ----------
         environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
-        out_path: the path to direct eddypro to write results to.
+        out_parent: Similar to the environment parent directoy. Sub-folders will be created within out_parent to contain output files from each worker.
         ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
         metadata_fn: path to a static .metadata file for this project. Must be provided if file_duration is None.
         num_workers: the number of parallel processes to configure. If None (default), then processing is split up according to the number of available processors on the machine minus 1.
@@ -479,7 +479,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         instance of eddypro, and places a new executable file and .eddypro file in each one. Here is an example of what this function will generate
         when instructed to create two workers in parallel, one processing 20220101-20221231, and one processing 20230101-20231231
 
-            ./environment_parent
+            /environment_parent
             |-- environment_20220101
             |  |-- bin
             |  |  |-- eddypro_rp
@@ -494,6 +494,22 @@ class EddyproConfigEditor(configparser.ConfigParser):
             |  |-- ini
             |  |  |-- processing.eddypro
             |  |-- tmp
+
+            /out_parent
+            |-- environment_20220101
+            |  |-- eddypro_stats
+            |  |  |--...
+            |  |-- eddypro_binned_cost
+            |  |  |--...
+            |  |-- eddypro-full-output.dat
+            |  |--...
+            |-- environment_20230101
+            |  |-- eddypro_stats
+            |  |  |--...
+            |  |-- eddypro_binned_cost
+            |  |  |--...
+            |  |-- eddypro-full-output.dat
+            |  |--...
 
         This method will check to make sure that the file has been set up in a valid manner.
         Specifically, it will check to make sure that the project start and end times are valid.
@@ -527,10 +543,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
         job_starts = worker_windows[:-1]
         job_ends = [start - Timedelta(file_duration) for start in worker_windows[1:]]
 
+        # make sure that the number of planar fit files, if provided, matches the number of workers
         if pf_file is not None:
             pf_file = list(pf_file)
             if len(pf_file) == 1: pf_file *= len(worker_windows) - 1
             assert len(pf_file) == len(worker_windows) - 1, 'planar fit files must match 1:1 with workers'
+        
+        #### file organization stuff ####
         # give each project a unique id and file name
         proj_id = self.Basic.get_output_id()['output_id']
         project_ids = [
@@ -538,7 +557,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ]
         ini_fns = [environment_parent / project_id / 'ini' / 'processing.eddypro' for project_id in project_ids]
         for fn in ini_fns: fn.parent.mkdir(exist_ok=True, parents=True)
+        # create output directories
+        Path(out_parent).mkdir(exist_ok=True)
+        out_dirs = [out_parent / project_id for project_id in project_ids]
+        for d in out_dirs: d.mkdir(exist_ok=True)
 
+        #### modify the .eddypro file for parallel operation ####
         # save original settings
         old_file_name = self.get('Project', 'file_name')
         old_out_path = self.Basic.get_out_path()
@@ -549,7 +573,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         # write new files
         for i, fn in enumerate(ini_fns):
             # self.set('Project', 'out_path', str(out_path))
-            self.Basic.set_out_path(out_path)
+            self.Basic.set_out_path(out_dirs[i])
             self.set('Project', 'file_name', str(fn))
             self.Basic.set_project_date_range(job_starts[i], job_ends[i])
             self.Basic.set_output_id(project_ids[i])
@@ -3774,7 +3798,7 @@ if __name__ == '__main__':
     template.to_eddypro(ini_file=wd / 'ini/BB-NF_17m_template.eddypro')
     template.to_eddypro_parallel(
         environment_parent=wd / 'ini/BB-NF_17m_template_parallel',
-        out_path=out_dir / 'Template_Parallel',
+        out_parent=out_dir / 'Template_Parallel',
         file_duration=1440,
         worker_windows=[datetime(y, 1, 1, 0, 0, 0) for y in range(2019, 2025)]
     )
