@@ -583,14 +583,14 @@ class EddyproConfigEditor(configparser.ConfigParser):
         # write new files
         for i, fn in enumerate(ini_fns):
             # make a collection of new environments
-            static = fn.parent / 'static.metadata'
-            shutil.copy(metadata_fn, static)
+            new_metadata = fn.parent / 'static.metadata'
+            shutil.copy(metadata_fn, new_metadata)
             if dynamic_metadata_fn is not None:
-                dynamic = fn.parent / 'dynamic.metadata'
-                shutil.copy(dynamic_metadata_fn, dynamic)
+                new_dynamic_metadata = fn.parent / 'dynamic.metadata'
+                shutil.copy(dynamic_metadata_fn, new_dynamic_metadata)
             else:
-                dynamic = False
-            self.Proj.set_metadata(static=static, dynamic=dynamic)
+                new_dynamic_metadata = False
+            self.Proj.set_metadata(static=new_metadata, dynamic=new_dynamic_metadata)
             
             self.Basic.set_out_path(out_dirs[i])
             
@@ -635,8 +635,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 new_tilt_settings['configure_planar_fit_settings_kwargs']['end'] = 'project'
                 self.Adv.Proc.set_axis_rotations_for_tilt_correction(**new_tilt_settings)
             if pf_file is not None:
+                new_pf_file = fn.parent / 'planar_fit.txt'
+                shutil.copy(pf_file[i], new_pf_file)
                 method = self.Adv.Proc.get_axis_rotations_for_tilt_correction()['method']
-                self.Adv.Proc.set_axis_rotations_for_tilt_correction(method=method, pf_file=pf_file[i])
+                self.Adv.Proc.set_axis_rotations_for_tilt_correction(method=method, pf_file=new_pf_file)
             
             # write to file
             with open(fn, 'w') as configfile:
