@@ -635,7 +635,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 new_tilt_settings['configure_planar_fit_settings_kwargs']['end'] = 'project'
                 self.Adv.Proc.set_axis_rotations_for_tilt_correction(**new_tilt_settings)
             if pf_file is not None:
-                new_pf_file = fn.parent / 'planar_fit.txt'
+                new_pf_file = fn.parent.parent / 'planar_fit.txt'
                 shutil.copy(pf_file[i], new_pf_file)
                 method = self.Adv.Proc.get_axis_rotations_for_tilt_correction()['method']
                 self.Adv.Proc.set_axis_rotations_for_tilt_correction(method=method, pf_file=new_pf_file)
