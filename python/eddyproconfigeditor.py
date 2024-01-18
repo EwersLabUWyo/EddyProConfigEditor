@@ -1183,6 +1183,64 @@ class EddyproConfigEditor(configparser.ConfigParser):
             """retrieve form the config file the project project ID"""
             return dict(output_id=self.root.get('Project', 'project_id'))
 
+        def set_wind_direction_filter(self, enable: bool = False, sectors: Sequence[Sequence[int | float]] | None = None):
+            """configure the wind direction filter for raw data. Any high frequency wind data originating from the designated sectors will be filtered out before 
+            completing any analysis on the data. e.g. a wind filter of 170-190 will filter out any wind originating from the south. Note that this is opposite of the
+            wind vector.
+            
+            Parameters
+            ----------
+            enable: if False (default), do not enable wind direction filtering. If True, enable wind direction filtering as specified by sectors.
+            sectors: if None, do not enable wind direction filtering. If provided, wind sectors should be given as a list of tuples, specifying the start and end of each wind sector.
+            e.g. the following would specify to filter wind from 2 sectors: sectors=[(0, 90), (170, 190)]."""
+
+            assert isinstance(enable, bool), 'enable must be bool'
+            if sectors is not None:
+                assert isinstance(sectors, Sequence), 'sectors must be a sequence of 2-tuples'
+                for sector in sectors:
+                    assert isinstance(sector, Sequence), 'individual sector must be a 2-tuple'
+                    assert len(sector) == 2, 'individual sector must be a 2-tuple'
+                    for d in sector:
+                        assert or_isinstance(d, int, float), 'sectors must be given as int or float'
+                        assert d >= 0 and d <= 360, 'sector boundaries must be given in degrees, between 0 and 360'
+            
+            history_args = ('Basic', 'wind_direction_filter', self.get_wind_direction_filter)
+            self.root._add_to_history(*history_args, True)
+
+            if not enable:
+                self.root.set('RawProcess_WindDirectionFilter', 'wdf_apply', '0')
+            else:
+                self.root.set('RawProcess_WindDirectionFilter', 'wdf_apply', '1')
+                for i, sector in enumerate(sectors):
+                    self.root.set('RawProcess_WindDirectionFilter', f'wdf_sect_{i + 1}_start', str(float(sector[0])))
+                    self.root.set('RawProcess_WindDirectionFilter', f'wdf_sect_{i + 1}_end', str(float(sector[1])))
+                for j in range(i, 16):
+                    self.root.remove_option('RawProcess_WindDirectionFilter', f'wdf_sect_{j + 1}_start')
+                    self.root.remove_option('RawProcess_WindDirectionFilter', f'wdf_sect_{j + 1}_end')
+
+            self.root._add_to_history(*history_args)
+
+        def get_wind_direction_filter(self) -> dict:
+            kwargs = dict()
+            kwargs['enable'] = bool(int(self.root.get('RawProcess_WindDirectionFilter', 'wdf_apply')))
+            if kwargs['enable']:
+                sectors = []
+                for i in range(16):
+                    try:
+                        sector = (
+                            float(self.root.get('RawProcess_WindDirectionFilter', f'wdf_sect_{i + 1}_start')),
+                            float(self.root.get('RawProcess_WindDirectionFilter', f'wdf_sect_{i + 1}_end')),
+                        )
+                    except configparser.NoOptionError:
+                        break
+                    sectors.append(sector)
+                kwargs['sectors'] = sectors
+            else: kwargs['sectors'] = None
+            return kwargs
+                    
+
+                
+
     # --------------------Advanced Settings Page-----------------------
     class _Adv:
         def __init__(self, root):
