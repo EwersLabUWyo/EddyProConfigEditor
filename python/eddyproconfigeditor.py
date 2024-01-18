@@ -34,7 +34,8 @@ Advanced Settings
     * DONE WS offsets
     * Fix w boost bug
     * AoA correction
-    ** DONE Axis rotations for tilt correction
+    ** Axis rotations for tilt correction
+      * Need to remove "excess" sectors. Ie. if we provide 5 sectors, but 10 exist, we need to remove the extra ones.
     ** DONE turbulent fluctuation
     ** DONE time lag compensations
     ** DONE WPL Corrections
