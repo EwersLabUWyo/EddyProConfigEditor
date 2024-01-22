@@ -4,3 +4,7 @@
 workflows/
 scratch/
 Pipeline/
+__pycache__
+-p
+.vscode
+.pyc
