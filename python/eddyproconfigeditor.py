@@ -1334,6 +1334,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     if end == 'all_available':
                         assert start == 'all_available', 'if one of start, end is "all_available", the other must be as well.'
                 assert isinstance(sectors, Sequence), 'sectors must be a sequence'
+                assert len(sectors) >= 1, 'must provide at least one sector'
                 assert len(sectors) <= 12, f'was given {len(sectors)} sectors. No more than 12 are permitted'
                 total_width = 0
                 for i, s in enumerate(sectors):
@@ -1456,6 +1457,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             'RawProcess_TiltCorrection_Settings', 'pf_mode', str(1))
                         pf_settings = self._configure_planar_fit_settings(
                             **configure_planar_fit_settings_kwargs)
+                        # before we set any sectors, we need to remove all the pre-existing sectors. 
+                        # this solves the problem of 5 sectors already existing, but the user only provides ones, resulting in
+                        # more sectors that the user specified or invalid sectors.
+                        for i in range(1, 17):
+                            self.root.remove_option('RawProcess_WindDirectionFilter', f'pf_sect_{i}_exclude')
+                            self.root.remove_option('RawProcess_WindDirectionFilter', f'pf_sect_{i}_width')
+                        # now we add the planar fit settings, including sector information.
                         for option, value in pf_settings.items():
                             self.root.set(
                                 'RawProcess_TiltCorrection_Settings', option, str(value))
