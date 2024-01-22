@@ -1215,7 +1215,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 for i, sector in enumerate(sectors):
                     self.root.set('RawProcess_WindDirectionFilter', f'wdf_sect_{i + 1}_start', str(float(sector[0])))
                     self.root.set('RawProcess_WindDirectionFilter', f'wdf_sect_{i + 1}_end', str(float(sector[1])))
-                for j in range(i, 16):
+                for j in range(i + 1, 16):
                     self.root.remove_option('RawProcess_WindDirectionFilter', f'wdf_sect_{j + 1}_start')
                     self.root.remove_option('RawProcess_WindDirectionFilter', f'wdf_sect_{j + 1}_end')
 
