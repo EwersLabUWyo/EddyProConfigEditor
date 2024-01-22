@@ -277,9 +277,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ]
             }
         }
-        where pane is one of 'Project', 'Basic', 'Advanced,' 
-        setting is the name of a setting in that pane (project_start_date or wind_speed_measurement_offsets, for example),
-        and where history[pane][setting] contains a list of change made to that setting. This list is composed of tuples of the form
+        where pane is one of 'Project', 'Basic', or 'Advanced,' and
+        setting is the name of a setting in that pane (project_start_date or wind_speed_measurement_offsets, for example). This makes
+        history[pane][setting] contain a list of changes made to that setting. This list is composed of tuples of the form
         (_num_changes, setting_kwargs), where _num_changes records the TOTAL number of changes made to the config file up to that point
         and setting_kwargs records the new settings recorded at that time, as returned by the get_XXXX function for that setting. The
         first entry in this list is always the initial state of that setting before any changes were made, meaning that _num_changes is
@@ -301,34 +301,33 @@ class EddyproConfigEditor(configparser.ConfigParser):
     -----
     This class splits up settings by how they are laid out in the EddyPro 7 GUI,
     and contains 3 nested classes:
-        * `Project` contains settings from the Project Creation pane
+        * `Proj` contains settings from the Project Creation pane
         * `Basic` contains settings from the basic settings pane
-        * `Advanced` contains settings from the advanced settings pane, which is broken up into four more nested classes:
-            * `Processing` -- settings from the processing option pane
-            * `Statistical` -- settings from the statistical analysis pane
-            * `Spectral` -- settings from the spectral analysis and corrections pane
-            * `Output` -- settings from the output options pane
+        * `Adv` contains settings from the advanced settings pane, which is broken up into four more nested classes:
+            * `Proc` -- settings from the processing option pane
+            * `Stat` -- settings from the statistical analysis pane
+            * `Spec` -- settings from the spectral analysis and corrections pane
+            * `Out` -- settings from the output options pane
 
     To imitate how the eddypro GUI changes INI settings, each of these nested classes contains
     `set_XXXX` methods which reproduce the functionality of the respective buttons and panels in the eddypro GUI.
-    For example, the `Advanced.Processing.set_turbulent_fluctuations` method will reproduce the behavior
+    For example, the `Adv.Proc.set_turbulent_fluctuations` method will reproduce the behavior
     of the "Turbulent fluctuations" options in the Eddypro 7 GUI, which can be found in the Advanced/Processing Options pane.
-    the `set_turbulent_fluctuations` lets you specify the detrend method and the time constant. Some functions are more complicated,
-    like `Advanced.Processing.set_axis_rotations_for_tilt_correction,` which needs to accomodate planar fit options. Read the documentation of 
+    Some functions are more complicated, like `Adv.Proce.set_axis_rotations_for_tilt_correction,` which needs to accomodate planar fit options. Read the documentation of 
     each method carefully.
 
-    Additionally, each `set` method is paired with a `get` method, which will retrieve the *current* settings for that method already stored in the file.
+    Additionally, each `set` method is paired with a `get` method, which will retrieve the *current* selected options for that method already stored in the file.
     the object returned by a given `get` method can be passed as **kwargs to the paired `set` method.
 
     e.g.: 
     >>> # instantiate from file
     >>> ini = EddyProConfigEditor('./config.eddypro')
     >>> # retrieve current turbulent fluctiations settings
-    >>> tf_kwargs = ini.Advanced.Processing.get_turbulent_fluctuations()
+    >>> tf_kwargs = ini.Adv.Proc.get_turbulent_fluctuations()
     >>> tf_kwargs
     {'detrend_method': 'block', 'time_constant': 0}
     >>> # re-write turbulent fluctuation settings without changing them
-    >>> ini.Advanced.Processing.set_turbulent_fluctuation(**tf_kwargs)  
+    >>> ini.Adv.Proc.set_turbulent_fluctuation(**tf_kwargs)  
 
     Finally, since EddyproConfigEditor is a child of configparser.ConfigParser, we can directly
     use ConfigParser methods on it. However, this is not recommended, since it can create changes
@@ -424,14 +423,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         Parameters
         ----------
         ini_file: the file name to write to
-        out_path: the path for eddypro to output results to. If 'keep' (default), use the outpath already in the config file
-
-        Notes
-        -----
-        this method will check to make sure that the file has been set up in a valid manner.
-        Specifically, it will check to make sure that the project start and end times are valid.
-        If any other time-specific settings are being used, it will check those for validity too,
-        such as planar fit settings, time lag auto-optimization settings, spectra calculation settings.
+        out_path: the path for eddypro to output results to. If 'keep' (default), use the outpath already in the config file (you can check this using Basic.get_out_path)
         """
         
         if str(ini_file)[-8:] != '.eddypro':
@@ -448,43 +440,30 @@ class EddyproConfigEditor(configparser.ConfigParser):
         environment_parent: str | PathLike[str],
         out_parent: str | PathLike[str],
         metadata_fn: str | PathLike[str],
+        worker_windows: Sequence[datetime.datetime],
         dynamic_metadata_fn: str | PathLike[str] | None = None,
         ep_bin: None | str | PathLike[str] = None,
         file_duration: int | None = None,
-        worker_windows: Sequence[datetime.datetime] | None = None,
         subset_pf_dates: bool = True,
         subset_sa_dates: bool = True,
         pf_file: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None,
         sa_dir: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None
     ) -> None:
         """
-        Split up a config file by time into multiple identical files, each covering a shorter time duration than the original file. In many circumatances, this can be used
-        to run eddypro in a pseudo-parallel configuration, speeding up processing times by orders of magnitude. However, this comes with some caveats and traps that can 
-        introduce errors into your final fluxes if you aren't careful. Some processes inside eddypro require long, continuous datasets to produce quality results: the planar fit method,
-        some spectral analysis methods, and the automatic time lag optimization methods require at least 2 weeks to 1 month of continuous data to work properly, and ideally more. 
-        This function can work around these issues, but needs user guidance on how to properly do that.
-        
-        Parameters
-        ----------
-        environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
-        out_parent: Similar to the environment parent directoy. Sub-folders will be created within out_parent to contain output files from each worker.
-        metadata_fn: path to a static .metadata file for this project.
-        dynamic_metadata_fn: same as metadata_fn, except for dynamic metadata. Can be None.
-        ep_bin: the path to the bin directory containing eddypro_rp and eddypro_fcc executables. This will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
-        file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
-        worker_windows: list of the breakpoints between workers, as datetimes. Each worker will span from worker_timespans[i] to worker_timespans[i + 1]. So [2022, 2023, 2024] will generate 2 workers: 2022-2023, and 2023-2024. Override num_workers and min_worker_timespan.
-        subset_pf_dates: if True (default), each worker will compute a planar fit only on the dataset allocated to it by the worker window. If False, each worker will compute a planar fit using all data in the raw data directory. This parameter is ignored if a planar fit is not required, or if pf_files are provided. Note that setting to False will drastically increase computation time. Be aware that setting this option to True when worker windows are shorter than 1 month. This option should not be set to true when worker windows are shorter than 2 weeks.
-        subset_sa_dates: same as for subset_pf_dates, but for spectral computation. At least one month of data is required for a robust spectral assessment, so this option should not be set to True when each worker window covers less than one month of data.
-        pf_file: a single planar fit file or a list of planar fit files to use. If multiple planar fit files are provided, they must be provided with worker windows, and must match 1:1 onto each worker. This argument overrides pf_subset.
-        sa_dir: a directory or a list of directories that contain binned (co)spectra files relevant to this run. Similarly to pf_file, if multiple directories are provided, they much match 1:1 onto each worker. This argument overrides sa_subset.
+        Write this object to a collection of .eddypro files which can be run in parellel. For example, a configuration that tells eddypro to process data from 2019-2024 
+        will be split up into multiple smaller sub-files, each covering a smaller timespan, as directed by the function arguments (for example, one config file covering each of
+        2019-2020, 2020-2021, 2021-2022, 2022-2023, and 2023-2024). This can be used to run eddypro in a pseudo-parallel configuration, speeding up processing times by orders of magnitude. 
+         
+        However, this comes with some caveats and traps that can introduce errors into your final fluxes if you aren't careful. Some processes inside eddypro require long, continuous datasets 
+        to produce quality results: the planar fit method, some spectral analysis methods, and the automatic time lag optimization methods require at least 2 weeks to 1 month of continuous 
+        data to work properly, and ideally more. This function can work around these issues, but needs user guidance on how to properly do that. Blindly telling this function to generate 365 eddypro sub-files 
+        each covering only 1 day of data without properly configuring the planar fit or spectral analysis settings will result in incorrect fluxes.
 
-        Notes
-        -----
-        On how to interpret the environment_parent, and ep_bin arguments: each instance of eddypro needs (1) a unique .eddypro
-        processing file and (2) a unique eddypro executable. This function will addresses this by creating a new environment folder for each
-        instance of eddypro, and places a new executable file and .eddypro file in each one. Here is an example of what this function will generate
-        when instructed to create two workers in parallel, one processing 20220101-20221231, and one processing 20230101-20231231
-
+        Additionally, EddyPro does not like to be run in this "parallel-jank" format, so this function tries to work around some of its idiosynchrasies:
+            1. Each sub-file gets its own environment directory. In this directory, we place .eddypro file, the eddypro_rp and eddypro_fcc executable files, and any additional files (such as planar fit files)
+            2. Each sub-file also gets its own output directory. These directories should be kept separate from the environment directories.
+       
+        Here is an example file structure after running to_eddypro_parellel with instructions to generate 2 sub-files. Each eddypro instance will write output to its respective output directory in out_parent:
             /environment_parent
             |-- environment_20220101
             |  |-- bin
@@ -503,36 +482,86 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             /out_parent
             |-- environment_20220101
-            |  |-- eddypro_stats
-            |  |  |--...
-            |  |-- eddypro_binned_cost
-            |  |  |--...
-            |  |-- eddypro-full-output.dat
-            |  |--...
             |-- environment_20230101
-            |  |-- eddypro_stats
-            |  |  |--...
-            |  |-- eddypro_binned_cost
-            |  |  |--...
-            |  |-- eddypro-full-output.dat
-            |  |--...
 
-        This method will check to make sure that the file has been set up in a valid manner.
-        Specifically, it will check to make sure that the project start and end times are valid.
-        If any other time-specific settings are being used, it will check those for validity too,
-        such as planar fit settings, time lag auto-optimization settings, spectra calculation settings.
-        
-        Note that some processing methods are not compatible "out-of-the-box" with paralle processing in this format,
-        specifically those methods which rely on aggregate data from longer time series. This includes:
-            * planar fit methods (require at least 2 weeks worth of data, ideally more).
-            * automatic time-lag optimization
-            * most spectral assessments require at least one month of data, ideally more.
-        To solve this issue, you can do one of the following:
-            * set the minimum worker timspan to be at least one month
-            * provide sufficient and representative spectral assesment, binned cospectra, planar fit, and/or automatic time lag optimization files from a previous run by modifying the axis_rotations_for_tilt_correction settings, the timelag_compenstaions settings, the spectra_calculations settings, and/or the spectra_qaqc settings.
-            * use methods that do not require long time spans of data.
+        Parameters
+        ----------
+        environment_parent: each instance of eddypro needs its own environment directory. This defines the parent directory that will contain all the separate environments.
+        out_parent: Similar to the environment parent directoy. Sub-folders will be created within out_parent to contain output files from each worker. Must be different from environment_parent.
+        metadata_fn: path to a static .metadata file for this project.
+        worker_windows: list of the breakpoints dilineating subfiles, as datetime objects. Each worker will span from worker_windows[i] to worker_windows[i + 1]. So [2022, 2023, 2024] will generate 2 workers: 2022-2023, and 2023-2024.
+        dynamic_metadata_fn: same as metadata_fn, except for dynamic metadata. Can be None (default)
+        ep_bin: the path to the directory containing both the eddypro_rp and eddypro_fcc executables. The entire contents of this directory will be copied into each environment. If None, then you will have to copy the eddypro executables into the bin directory of each environment yourself.
+        file_duration: how many minutes long each file is (NOT the averaging interval). If None (Default), then that information will be gleaned from the metadata file.
+        subset_pf_dates: if True (default), each worker will compute a planar fit only on the dataset allocated to it by the worker window. If False, each worker will compute a planar fit using all data in the raw data directory. This parameter is ignored if a planar fit is not required, or if pf_files are provided. Note that setting to False will drastically increase computation time. Be aware that setting this option to True when worker windows are shorter than 1 month. This option should not be set to true when worker windows are shorter than 2 weeks.
+        subset_sa_dates: same as for subset_pf_dates, but for spectral computation. At least one month of data is required for a robust spectral assessment, so this option should not be set to True when each worker window covers less than one month of data.
+        pf_file: a single planar fit file or a list of planar fit files to use. If multiple planar fit files are provided, they must match 1:1 onto each worker. This argument overrides pf_subset. This setting is highly recommended in all cases where a planar fit must be used with worker windows of <3 month durations.
+        sa_dir: a directory or a list of directories that contain binned (co)spectra files relevant to this run. Similarly to pf_file, if multiple directories are provided, they much match 1:1 onto each worker. This argument overrides sa_subset. This setting is highly recommended in all cases where a spectral must be used with worker windows of <3 month durations.
+        autoopt_file: a single automatic timelag optimization file or list of such files. If multiple such files are provided, they must match 1:1 onto each worker. This argument overrides autoopt_subset. This setting is highly recommended in all cases where a time lag optimization must be used with worker windows of <3 month durations.
+
+        Examples
+        --------
+        >>> from datetime import datetime
+        >>> from pandas import date_range
+        >>> #
+        >>> metadata_fn = '~/static.metadata'
+        >>> ep_bin = '~/project/bin'
+        >>> # Example 1: assuming you already have a ready-to-go config file configured for planar fit, each worker processes 180 days of data and performs a spectral assessment and planar fit correction on those 180 days
+        >>> start, end = '2019-01-01 00:00', '2023-12-31 23:30'  # start and end of this run
+        >>> # each sub-file will process 180 days of data
+        >>> worker_windows = [datetime.strptime(d, r'%Y-%m-%d %H:%M') for d in date_range(start, end, freq='180d').strftime(r'%Y-%m-%d %H:%M')]  # timespan to allocate to each processor
+        >>> template.to_eddypro_parallel(
+        >>>     environment_parent='environments',
+        >>>     out_parent='outs',
+        >>>     metadata_fn=metadata_fn,
+        >>>     file_duration=1440,
+        >>>     ep_bin=ep_bin,
+        >>>     worker_windows=worker_windows
+        >>> )
+        >>> #
+        >>> # Example 2: assuming you already have a ready-to-go config file configured for planar fit, each worker processes only 7 days of data.
+        >>> # In this case, each worker window is too short to properly compute a planar fit and spectral assessment, so we must provide that information ourselves.
+        >>> worker_windows = [datetime.strptime(d, r'%Y-%m-%d %H:%M') for d in date_range(start, end, freq='7d').strftime(r'%Y-%m-%d %H:%M')]  # timespan to allocate to each processor
+        >>> pf_file = '~/previous_run/eddypro...planar_fit....txt'
+        >>> sa_dir = '~/previous_run/eddypro_binned_cospectra'
+        >>> template.to_eddypro_parallel(
+        >>>     environment_parent='environments',
+        >>>     out_parent='outs',
+        >>>     metadata_fn=metadata_fn,
+        >>>     file_duration=1440,
+        >>>     ep_bin=ep_bin,
+        >>>     worker_windows=worker_windows,
+        >>>     pf_file=pf_file,
+        >>>     sa_dir=sa_dir
+        >>> )
+        >>> #
+        >>> # Example 3: assuming you already have a ready-to-go config file configured for planar fit, each worker processes only 7 days of data.
+        >>> # In this case, each worker window is too short to properly compute a planar fit and spectral assessment, so we must provide that information ourselves.
+        >>> # Here, we have 4 planar fit files, one for each of 2019, 2020, 2021, 2022, and 2023. We must match these up with the worker windows. We have 260 worker windows (261 edges - 1)
+        >>> # each worker is assigned the planar fit file computed on the worker's year.
+        >>> worker_windows = [datetime.strptime(d, r'%Y-%m-%d %H:%M') for d in date_range(start, end, freq='7d').strftime(r'%Y-%m-%d %H:%M')]  # timespan to allocate to each processor
+        >>> _pf_file = [
+        >>>     ['~/previous_run/planar_fit_2019']*52,
+        >>>     ['~/previous_run/planar_fit_2020']*52,
+        >>>     ['~/previous_run/planar_fit_2021']*52,
+        >>>     ['~/previous_run/planar_fit_2022']*52,
+        >>>     ['~/previous_run/planar_fit_2023']*52,
+        >>> ]
+        >>> pf_files = []
+        >>> for lst in _pf_files: pf_files += lst  # create 6 copies of each planar fit file, since we have 6x more workers
+        >>> #
+        >>> sa_dir = '~/previous_run/eddypro_binned_cospectra'
+        >>> template.to_eddypro_parallel(
+        >>>     environment_parent='environments',
+        >>>     out_parent='outs',
+        >>>     metadata_fn=metadata_fn,
+        >>>     file_duration=1440,
+        >>>     ep_bin=ep_bin,
+        >>>     worker_windows=worker_windows,
+        >>>     pf_file=pf_file,
+        >>>     sa_dir=sa_dir
+        >>> )
         """
-
         
         # get file duration
         if file_duration is None:
@@ -842,6 +871,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             self.root = root
 
         def set_project_name(self, name: str):
+            """Enter a name for the flux computation project. This field is optional."""
             history_args = ('Project', 'project_name', self.get_project_name)
             self.root._add_to_history(*history_args, True)
             self.root.set('Project', 'project_title', str(name))
@@ -850,8 +880,71 @@ class EddyproConfigEditor(configparser.ConfigParser):
         def get_project_name(self):
             return dict(name=self.root.get('Project', 'project_title'))
         
+        def set_raw_file_format(self, fmt, n_ascii_header_lines=None, ascii_header_eol=None, num_bytes_per_var=None, endianess=None):
+            """Set the raw file format settings
+            
+            Parameters
+            ----------
+            fmt: one of 'ghg', 'ascii', 'generic_binary', 'TOB1_auto', 'TOB1_IEEE4', 'TOB1_FP2', 'EddySoft', 'EdiSol'.
+            n_ascii_header_lines, ascii_header_eol, num_bytes_per_var, endianess: required if format='generic_binary,' otherwise ignored.
+            """
+            history_args = ('Project', 'raw_file_format', self.get_raw_file_format)
+            self.root._add_to_history(*history_args, True)
+
+            assert fmt in ['ghg', 'ascii', 'generic_binary', 'TOB1_auto', 'TOB1_IEEE4', 'TOB1_FP2', 'EddySoft', 'EdiSol'], "fmt must be one of 'ghg', 'ascii', 'generic_binary', 'TOB1_auto', 'TOB1_IEEE4', 'TOB1_FP2', 'EddySoft', 'EdiSol'"
+            if fmt == 'generic_binary':
+                assert (
+                    n_ascii_header_lines is not None and 
+                    ascii_header_eol is not None and
+                    num_bytes_per_var is not None and 
+                    endianess is not None
+                    ), 'n_ascii_header_lines, eascii_header_eol, num_bytes_per_var, and endianess must be provided when using generic_binary format'
+
+            match fmt:
+                case 'ghg':
+                    self.root.set('Project', 'file_type', '0')
+                case 'ascii':
+                    self.root.set('Project', 'file_type', '1')
+                case 'generic_binary':
+                    self.root.set('Project', 'file_type', '5')
+                    self.root.set('Project', 'binary_eol', int(ascii_header_eol))
+                    self.root.set('Project', 'hnlines', int(n_ascii_header_lines))
+                    self.root.set('Project', 'binary_little_end', int(endianess))
+                    self.root.set('Project', 'binary_nbytes', int(num_bytes_per_var))
+                case 'TOB1_auto':
+                    self.root.set('Project', 'file_type', '2')
+                    self.root.set('Project', 'tob1_format', '0')
+                case 'TOB1_IEEE4': 
+                    self.root.set('Project', 'file_type', '2')
+                    self.root.set('Project', 'tob1_format', '1')
+                case 'TOB1_FP2':
+                    self.root.set('Project', 'file_type', '2')
+                    self.root.set('Project', 'tob1_format', '2')
+                case 'EddySoft':
+                    self.root.set('Project', 'file_type', '3')
+                case 'EdiSol':
+                    self.root.set('Project', 'file_type', '4')
+            self.root._add_to_history(*history_args)
+        def get_raw_file_format(self) -> dict:
+            kwargs = dict()
+            formats = ['ghg', 'ascii', 'tob1', 'EddySoft', 'EdiSol', 'generic_binary']
+            fmt = formats[int(self.root.get('Project', 'file_type'))]
+            match fmt:
+                case 'tob1':
+                    tob1_types = ['TOB1_auto', 'TOB1_IEEE4', 'TOB1_FP2']
+                    kwargs['fmt'] = tob1_types[int(self.root.get('Project', 'tob1_format'))]
+                case 'generic_binary':
+                    kwargs['fmt'] = 'generic_binary'
+                    kwargs['n_ascii_header_lines'] = int(self.root.get('Project', 'hnlines'))
+                    kwargs['ascii_header_eol'] = int(self.root.get('Project', 'binary_eol'))
+                    kwargs['num_bytes_per_var'] = int(self.root.get('Project', 'binary_nbytes'))
+                    kwargs['endianess'] = int(self.root.get('Project', 'binary_little_end'))
+                case _:
+                    kwargs['fmt'] = fmt
+            return kwargs
+        
         def set_metadata(self, static:str|PathLike|Literal['embedded'], dynamic:str|PathLike|bool=False):
-            """set the metadata information
+            """Set how to process project metadata.
             
             Parameters
             ----------
