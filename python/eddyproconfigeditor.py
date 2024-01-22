@@ -1048,6 +1048,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         
     # --------------------Basic Settings Page-----------------------
     class _Basic:
+        """Basic processing settings"""
         def __init__(self, root):
             self.root = root
 
@@ -1138,7 +1139,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
             self.root.set('Project', 'pr_end_time', str(pr_end_time))
             
         def get_project_end_date(self) -> dict:
-            """retrieve form the config file the project end date."""
+            """retrieve from the config file the project end date."""
             out = dict()
             end_date = self.root.get('Project', 'pr_end_date')
             end_time = self.root.get('Project', 'pr_end_time')
@@ -1181,7 +1182,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
             return dict(start=start, end=end)
 
         def set_missing_samples_allowance(self, pct: int):
-            # pct: value from 0 to 40%
+            """
+            Set the missing samples allowance
+
+            Parameters
+            ----------
+            pct: value from 0 to 40%
+            """
             assert pct >= 0 and pct <= 40, 'pct must be between 0 and 40'
 
             history_args = ('Basic', 'missing_samples_allowance', self.get_missing_samples_allowance)
@@ -1193,7 +1200,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
             return int(self.root.get('RawProcess_Settings', 'max_lack'))
 
         def set_flux_averaging_interval(self, minutes: int):
-            """minutes: how long to set the averaging interval to. If 0, use the file as-is"""
+            """
+            Set the flux averaging interval.
+            
+            Parameters
+            -----------
+            minutes: how long to set the averaging interval to. If 0, use the file as-is"""
 
             assert minutes >= 0 and minutes <= 9999, 'Must have 0 <= minutes <= 9999'
             
@@ -1213,6 +1225,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
         ):
             """set the north reference to either magnetic north (mag) or geographic north (geo). If geographic north, then you must provide a magnetic delcination and a declination date.
 
+            Parameters
+            ----------
             method: one of 'mag' or 'geo'
             magnetic_declination: a valid magnetic declination as a real number between -90 and 90. If 'geo' is selected, magnetic declination must be provided. Otherwise, does nothing.
             declination_date: the reference date for magnetic declination, either as a yyyy-mm-dd string or as a datetime.datetime object. If method = 'geo', then declination date must be provided. Otherwise, does nothing.
@@ -1267,6 +1281,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 declination_date=dec_date)
 
         def set_output_id(self, output_id: str):
+            """
+            Set the output id. This will be appended to each output file, so short ids are recommended. 
+            The characters | \ / : ; ? * ' \" < > CR LF TAB SPACE and other non readable characters are prohibited, but we don't check for this.
+            Additionally, underscores "_" are prohibited. This is to help with output file parsing. We recommend using hyphens ("-") instead.
+
+            Parameters
+            ----------
+            output_id: the output id to use. Must not includes underscores.
+            """
             assert ' ' not in output_id and '_' not in output_id, 'output id must not contain spaces or underscores.'
 
             history_args = ('Basic', 'project_id', self.get_output_id)
@@ -1278,10 +1301,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
             return dict(output_id=self.root.get('Project', 'project_id'))
 
         def set_wind_direction_filter(self, enable: bool = False, sectors: Sequence[Sequence[int | float]] | None = None):
-            """configure the wind direction filter for raw data. Any high frequency wind data originating from the designated sectors will be filtered out before 
-            completing any analysis on the data. e.g. a wind filter of 170-190 will filter out any wind originating from the south. Note that this is opposite of the
-            wind vector.
-            
+            """configure the wind direction filter for raw data. Any high frequency wind data originating from the designated sectors will be removed from the dataset
+            e.g. a wind filter of 170-190 will filter out any wind originating from the south. Note that this means that wind direction is the meteorological wind direction not the angle of the wind vector,
+            so if your tower sits to the south of your anemometer, you should filter any southerly winds with a wind filter spanning 170°-190°.
+
             Parameters
             ----------
             enable: if False (default), do not enable wind direction filtering. If True, enable wind direction filtering as specified by sectors.
@@ -1337,6 +1360,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
     # --------------------Advanced Settings Page-----------------------
     class _Adv:
+        """Advanced processing settings"""
         def __init__(self, root):
             self.root = root
             self.Proc = self._Proc(self)
@@ -1346,12 +1370,18 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
         # --------Processing Options---------
         class _Proc:
+            """Processing options"""
             def __init__(self, outer):
                 self.outer = outer
                 self.root = outer.root
 
             def set_wind_speed_measurement_offsets(
                     self, u: float = 0, v: float = 0, w: float = 0):
+                """Wind speed measurements by a sonic anemometer may be biased by systematic deviation, which needs to be eliminated (e.g., for a proper assessment of tilt angles).
+                
+                Parameters
+                ----------
+                u, v, w: the u, v, and w offsets, in m/s. Must be no greater than 10m/s in magnitude."""
                 assert max(u**2, v**2, w**2) <= 100, 'Windspeed measurement offsets cannot exceed ±10m/s'
                 
                 history_args = ('Advanced-Processing', 'wind_speed_measurement_offsets', self.get_wind_speed_measurement_offsets)
@@ -1380,7 +1410,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 sectors: Sequence[Sequence[bool | int, float]] = [(False, 360)],
                 return_inputs: bool = False
             ) -> dict:
-                """outputs a dictionary of planarfit settings
+                """outputs a dictionary of planarfit settings that can be written directly to the .ini file
 
                 Parameters
                 ----------
@@ -1509,6 +1539,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 configure_planar_fit_settings_kwargs: dict | None = None,
             ):
                 """
+                Specify how rotate coordinate axes when performing tilt corrections. Note that if you are using a planar fit option (Recommended), you 
+                must either provide a planar fit file for configure the planar fit settings (see _configure_planar_fit_settings method)
+
                 Parameters
                 ----------
                 method: one of 0 or "none" (no tilt correction), 1 or "double_rotations" (default), 2 or "triple_rotations", 3 or "planar_fit" (Wilczak 2001), 4 or "planar_fit_nvb" (planar with with no velocity bias (van Dijk 2004)). If a planar fit-type method is selected, then exactly one of pf_file or pf_settings_kwargs must be provided if method is a planar fit type. 
@@ -1665,13 +1698,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
                                 'exponential_running_mean'] | int = 'block',
                 time_constant: float | Literal['averaging_interval'] | None = None):
                 '''
+                Configure how to extract turbulent fluctuating component from wind and concentration data.
+
                 Parameters
                 ----------
                 detrend_method: one of 'block' (0), 'detrend (1), running_mean (2), or exponential_running_mean (3). Default 'block'
                 time_constant: if detrend, running_mean, or exponential_running_mean are selected, provide a time constant in minutes. Default None. If None and linear_detrend is selected, set time_constant to 0 to indicate to eddypro to use the flux averaging interval as the time constant. If a running mean method is selected and time_constant is None, set time_constant to 250s.
                     detrend_method              default time_constant
                     block                       0 (does nothing)
-                    linear                     0 (flux averaging interval)
+                    linear                      0 (flux averaging interval)
                     running_mean                250 (seconds)
                     exponential_running_mean    250 (seconds)
 
@@ -1742,6 +1777,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 
             ) -> dict:
                 """
+                Generate configuration options for automatic time lag optimization method. Returns a dictionary that can be used to directly modify the ini file.
+
                 Parameters
                 ----------
                 start, end: start and end date-times for time lag optimization computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
@@ -1845,8 +1882,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
                                                           'covariance_maximization',
                                                           'automatic_optimization'] | int = 'covariance_maximization_with_default',
                                           autoopt_file: PathLike[str] | str | None = None,
-                                          configure_TimelagAutoOpt_kwargs: dict | None = None):
+                                          autoopt_settings_kwargs: dict | None = None):
                 """
+                Configure how to compensate for time lags between instruments. Note that if automatic optimization is selected, an autoopt file must be provided, or configure_TimeLagAutoOpt_kwargs must be provided.
+
+                Parameters
+                ----------
                 method: one of 0 or "none" (no time lag compensation), 1 or "constant" (constant time lag from instrument metadata), 2 or "covariance_maximization_with_default" (Default), 3 or "covariance_maximization", or 4 or "automatic_optimization." one of autoopt_file or autoopt_settings_kwargs must be provided if method is a planar fit type.
                 autoopt_file: Mututally exclusive with autoopt_settings_kwargs. If method is a planar fit type, path to an eddypro-compatible automatic time lag optimization file. This can be build by hand, or taken from the output of a previous eddypro run. Typically labelled as "eddypro_<project id>_timelag_opt_<timestamp>_adv.txt" or similar
                 autoopt_settings_kwargs: Mututally exclusive with autoopt_file. Arguments to be passed to configure_TimelagAutoOpt.
@@ -1860,9 +1901,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else: 
                     assert method in range(5), 'method must be one of None, constant, covariance_maximization_with_default, covariance_maximization, automatic_optimization, or 0, 1, 2, 3, or 4.'
                 if method == 4 or method == 'automatic_optimization':
-                    assert bool(autoopt_file) != bool(configure_TimelagAutoOpt_kwargs), 'If method is automatic_optimization, exactly one of autoopt_file or configure_TimelagAutoOpt_kwargs should be specified.'
-                    if configure_TimelagAutoOpt_kwargs is not None:
-                        assert isinstance(configure_TimelagAutoOpt_kwargs, dict), 'configure_TimelagAutoOpt_kwargs must be None or dict.'
+                    assert bool(autoopt_file) != bool(autoopt_settings_kwargs), 'If method is automatic_optimization, exactly one of autoopt_file or configure_TimelagAutoOpt_kwargs should be specified.'
+                    if autoopt_settings_kwargs is not None:
+                        assert isinstance(autoopt_settings_kwargs, dict), 'configure_TimelagAutoOpt_kwargs must be None or dict.'
 
                 method_dict = {
                     'none': 0,
@@ -1884,13 +1925,13 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             str(autoopt_file))
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings', 'to_mode', str(0))
-                    elif configure_TimelagAutoOpt_kwargs is not None:
+                    elif autoopt_settings_kwargs is not None:
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings', 'to_file', '')
                         self.root.set(
                             'RawProcess_TimelagOptimization_Settings', 'to_mode', str(1))
                         to_settings = self._configure_timelag_auto_opt(
-                            **configure_TimelagAutoOpt_kwargs)
+                            **autoopt_settings_kwargs)
                         for option, value in to_settings.items():
                             self.root.set(
                                 'RawProcess_TimelagOptimization_Settings', option, str(value))
@@ -2013,8 +2054,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     night_spar: Sequence | Literal['revert'] | None = None,
                     set_all: Literal['revert'] | None = None,
             ):
-                """how to correct for density fluctuations. Default mode is to only correct for bulk density fluctuations.
+                """Configure how to correct for density fluctuations. Default mode is to only correct for bulk density fluctuations.
 
+                Parameters
+                ----------
                 enable: If true, correct for density fluctuations with the WPL term (default)
                 burba_correction: If true, add instrument sensible heat components. LI-7500 only. Default False.
                 estimation_method: one of 'simple' or 'multiple'. Whether to use simple linear regression or Multiple linear regression. if burba_correction is enabled, this argument cannot be None (default)
@@ -2203,6 +2246,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
          # --------Statistical Analysis---------
 
         class _Stat:
+            """Statistical test options"""
             def __init__(self, outer):
                 self.root = outer.root
                 self.outer = outer
@@ -2222,6 +2266,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     others: float = 3.5
             ):
                 """Settings for spike count and removaal.
+
+                Parameters
+                ----------
                 enable: whether to enable despiking. Default True
                 method: one of 'VM97' or 'M13' for Vickers & Mart 1997 or Mauder et al 2013. Default 'VM97'. If M13 is selected, only the accepted and linterp options are used.
                 accepted: If, for each variable in the flux averaging period, the number of spikes is larger than accepted% of the number of data samples, the variable is hard-flagged for too many spikes. Default 1%
@@ -2332,6 +2379,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for detecting amplitude resolution errors
+
+                Parameters
+                ----------
                 enable: whether to enable amplitude resolution flagging. Default True
                 variation_range: the expected maximum z-score range for the data. Default ±7σ
                 bins: int, the number of bins for the histogram. Default 100
