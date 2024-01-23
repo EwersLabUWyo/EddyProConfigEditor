@@ -2452,6 +2452,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for detecting instrument dropouts
+
+                Parameters
+                ----------
                 enable: whether to enable dropout flagging. Default True
                 extreme_percentile: int, bins lower than this percentile in the histogram will be considered extreme. Default 10
                 accepted_central_dropouts: If consecutive values fall within a non-extreme histogram bin, flag the instrument for a dropout. If more than accepted_central_dropouts% of the averaging interval are flagged as dropouts, flag the whole averagine interval. Default 10%
@@ -2525,6 +2528,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for flagging unphysically large or small values
+
+                Parameters
+                ----------
                 enable: whether to enable dropout flagging. Default True
                 u, w: absolute limit for |u| and |w| in m/s. Default 30.0, 5.0 respectively.
                 ts: sequence of length 2, absolute limits in degrees C for sonic temperature. Default (-40.0, 50.0)
@@ -2659,6 +2665,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for flagging time windows for extreme skewness and kurtosis values
+
+                Parameters
+                ----------
                 enable: whether to enable skewness and kurtosis flagging. Default True
                 skew_lower: a tuple of (hard, soft) defining the upper limit for skewness, where hard defines the hard-flagging threshold and soft defines the soft-flagging threshold. Default is (-2.0, -1.0).
                 all following arguments obey similar logic. Defaults are (2.0, 1.0), (1.0, 2.0), (8.0, 5.0) respectively.
@@ -2754,6 +2763,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 settings for detecting semi-permanent distontinuities in timeseries data
+
+                Parameters
+                ----------
                 enable: whether to enable discontinuity flagging. Default False
                 u, w, ts, co2, h2o, ch4, gas4: a sequence of (hard, soft) specifying the hard and soft-flag thresholds for the haar transform on raw data. See eddypro documentation or Vickers and Mahrt 1997 for an explanation of thresholds.
                 variances: same as above, but for variances rather than raw data.
@@ -2837,10 +2849,12 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for flagging time lags: if, when correcting Cov(w, X) for time lags in X, Cov(w, X) differs significantly from the non-time-lag-corrected covariance, throw a flag.
+
+                Parameters
+                ----------
                 enable: whether to enable flagging for excessive changes in covariance due to time lags (default False)
                 covariance_difference: a tuple of (hard, soft) for covariance differences as a % between uncorrected and time-lag-corrected covariances, where hard defines the hard-flagging threshold and soft defines the soft-flagging threshold.
                 co2/h2o/ch4/gas4: the expected time lags for each gas in seconds.
-
                 limits on inputs:
                 covariance_difference: 0-100%, with soft <= hard
                 all other values: 0-100s
@@ -2941,6 +2955,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for flagging extreme angles of attack
+
+                Parameters
+                ----------
                 enable: whether to enable angle-of-attack flagging. Default False
                 aoa_min: the minimum acceptable angle of attack in degrees. Default -30.
                 aoa_max: the maximum acceptable angle of attack in degrees. Default 30.
@@ -3012,6 +3029,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 """
                 Settings for flagging horizontal wind steadiness.
 
+                Parameters
+                ----------
                 enable: whether to enable flagging of horizontal wind steadiness. Default False.
                 max_rel_inst: if the change in windspeed over the averaging window normalized by the mean windspeed exceeds this threshold, hard-flag the record. Default 0.5 for 50% relative instationarity.
 
@@ -3060,6 +3079,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
             ):
                 """
                 Settings for estimating random uncertainty due to sampling error
+
+                Parameters
+                ----------
                 method: one of disable, FS01 (Finkelstein and Sims 2001), ML94 (Mann & Lenschow 1994), or M98 (Mahrt 1998), or 0, 1, or 2, respectively
                 its_definition: definition of the integral turbulence scale. Options are 'at_1/e', 'at_0', 'whole_record', or 0, 1, or 2, respecitvely. See EddyPro documentation for more details.
                 maximum_correlation_period: maximum time to integrate over when determining the integral turbulence scale. Default is 10.0s. Must be within [0, 10000] seconds
@@ -3128,6 +3150,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 power_2: bool | int = True
             ):
                 """
+                Settings for how to compute (co)spectra for further analysis
+
                 Parameters
                 ----------
                 binned_cosp_dir: either a str or pathlike object pointing to a directory of eddypro-readable binned cospectra files for this dataset. If None (default) to indicate to eddypro to compute co-spectra on-the-fly. If None, it is HIGHLY recommended to set eddypro to output binned spectra in the output section.
@@ -3242,9 +3266,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 gas4: float = 1.0,
             ):
                 """
+                Settings for removing high frequency noise
+
                 Parameters
                 ----------
-                for each gas, provide the lowest frequency representing blue noise. If 0, do not remove noise.
+                for each gas (co2, h2o, ch4, gas4), provide the lowest frequency representing blue noise. If 0, do not remove noise. Default 1.0 for all gasses.
 
                 limits on inputs
                 0 - 50Hz
@@ -3286,7 +3312,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 filter_mf04: Literal['low', 'moderate', 'none'] = 'low'
             ):
                 """
-                see EddyPro manual on QA/QC of spectra and cospectra for explanation of settings.
+                Settings for Qa/Qc of (co)spectra. See EddyPro manual on QA/QC of spectra and cospectra for explanation of settings.
+
                 Parameters
                 ----------
                 ustar: sequence of (min_unstable, min_stable, max) providing the minimum reasonable values of ustar in unstable and stable conditions, respectively, and the maximum reasonable ustar in any conditions. Default (0.2, 0.05, 5.0) m/s
@@ -3407,7 +3434,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 return out
 
             def set_lf_correction(self, enable: bool = True):
-                """whether to apply analytic correction of high-pass filtering affects.
+                """
+                whether to apply analytic correction of high-pass filtering affects.
+                
                 Parameters
                 ---------
                 enable: bool. If true (default), apply analytic correction of high-pass filtering effects from Moncrieff et al, 2004"""
@@ -3575,10 +3604,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 fratini_kwargs: dict | None = None,
             ):
                 """how to apply low-pass filtering effects
+
                 Parameters
                 ---------
                 low_pass_method: one of 'none', 'moncrieff', 'horst', 'ibrom', 'fratini', 'massman' or int 0-5 to indicate whih low-pass filtering correction method to apply. If 'horst', 'ibrom', or 'fratini' is selected, then the corresponding kwargs dict must be provided too.
-                horst/ibrom_fratini_kwargs: kwargs passed to one of _configure_horst, _configure_ibrom, or _configure_fratini. 
+                horst/ibrom/fratini_kwargs: kwargs passed to one of _configure_horst, _configure_ibrom, or _configure_fratini. Provide the one matching the low_pass_method provided. Required for horst, ibrom, and fratini.
                 """
                 # history
                 history_args = ('Advanced-Spectra', 'hf_correction', self.get_hf_correction)
@@ -3693,6 +3723,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 metadata: bool = True,
             ):
                 """
+                General settings for output files 
+
                 Parameters
                 ----------
                 full_output: bool, whether to generate the main eddypro output file, the fulloutput file. Default True
@@ -3761,6 +3793,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 full_cospectra: list[Literal['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4']] | Literal['w/u', 'w/v', 'w/ts', 'w/co2', 'w/h2o', 'w/ch4', 'w/gas4', 'all', 'none'] = 'w/ts',  # NEED FOR FRATINI
             ):
                 """
+                Settings for spectral output files
+
                 Parameters
                 ----------
                 binned_spectra: bool, default True, whether to output binned spectra. This argument MUST be set to true when binned cospectra files are not available from a previous run (when binned_cosp_dir argument is None in Spectral.set_calculation)
@@ -3870,7 +3904,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 return out
             
-            def set_chain_of_custody(
+            def set_intermediate_results(
                 self,
                 unprocessed: Literal['stats', 'timeseries', 'both', 'none'] = 'stats',
                 despiked: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
@@ -3881,12 +3915,14 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 detrended: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
                 variables: list[Literal['u', 'v', 'w', 'ts', 'co2', 'h2o', 'ch4', 'gas4', 'ta', 'pa', 'all', 'none']] = 'none'
             ):
-                """Which levels of output to generate.
+                """
+                Settings for intermediate result output files/chain of custody tracking
+
                 Parameters
                 ----------
                 for each parameter other than variables: one of 'stats', 'timeseries', 'both', or 'none' specifying whether to output just the statistics, or the full timeseries for that level of processing.
                 variables: sequence of strings indicating which timeseries to output data for when timeseries is selected"""
-                history_args = ('Advanced-Output', 'chain_of_custody', self.get_chain_of_custody)
+                history_args = ('Advanced-Output', 'intermediate_results', self.get_intermediate_results)
                 self.root._add_to_history(*history_args, True)
 
                 for v in [unprocessed, despiked, crosswind_corrected, aoa_corrected, tilt_corrected, timelag_corrected, detrended]:
@@ -3936,7 +3972,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 self.root._add_to_history(*history_args)
                 return
-            def get_chain_of_custody(self):
+            def get_intermediate_results(self):
                 out = dict()
 
                 for i, k in enumerate(['unprocessed', 'despiked', 'crosswind_corrected', 'aoa_corrected', 'tilt_corrected', 'timelag_corrected', 'detrended']):
@@ -4023,7 +4059,7 @@ if __name__ == '__main__':
         full_spectra='none',
         full_cospectra='none'
     )
-    template.Adv.Out.set_chain_of_custody(
+    template.Adv.Out.set_intermediate_results(
         unprocessed='stats',
         despiked='stats',
         timelag_corrected='timeseries',
