@@ -3537,7 +3537,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 return out
             
-            def set_chain_of_custody(
+            def set_intermediate_results(
                 self,
                 unprocessed: Literal['stats', 'timeseries', 'both', 'none'] = 'stats',
                 despiked: Literal['stats', 'timeseries', 'both', 'none'] = 'none',
@@ -3553,7 +3553,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 ----------
                 for each parameter other than variables: one of 'stats', 'timeseries', 'both', or 'none' specifying whether to output just the statistics, or the full timeseries for that level of processing.
                 variables: sequence of strings indicating which timeseries to output data for when timeseries is selected"""
-                history_args = ('Advanced-Output', 'chain_of_custody', self.get_chain_of_custody)
+                history_args = ('Advanced-Output', 'intermediate_results', self.get_intermediate_results)
                 self.root._add_to_history(*history_args, True)
 
                 for v in [unprocessed, despiked, crosswind_corrected, aoa_corrected, tilt_corrected, timelag_corrected, detrended]:
@@ -3603,7 +3603,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 self.root._add_to_history(*history_args)
                 return
-            def get_chain_of_custody(self):
+            def get_intermediate_results(self):
                 out = dict()
 
                 for i, k in enumerate(['unprocessed', 'despiked', 'crosswind_corrected', 'aoa_corrected', 'tilt_corrected', 'timelag_corrected', 'detrended']):

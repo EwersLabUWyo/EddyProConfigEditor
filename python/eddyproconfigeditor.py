@@ -656,10 +656,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if (
                 (old_timelag_settings['method'] == 'automatic_optimization')
                 and (old_timelag_settings['autoopt_file'] is None)
-                and (old_timelag_settings['configure_TimelagAutoOpt_kwargs']['start'] != 'project')
+                and (old_timelag_settings['autoopt_settings_kwargs']['start'] != 'project')
             ):
-                new_timelag_settings['configure_TimelagAutoOpt_kwargs']['start'] = 'project'
-                new_timelag_settings['configure_TimelagAutoOpt_kwargs']['end'] = 'project'
+                new_timelag_settings['autoopt_settings_kwargs']['start'] = 'project'
+                new_timelag_settings['autoopt_settings_kwargs']['end'] = 'project'
                 self.Adv.Proc.set_timelag_compensations(**new_timelag_settings)
             if autoopt_file is not None:
                 new_autoopt_file = fn.parent.parent / 'auto_opt.txt'
@@ -1876,7 +1876,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 if ch4_lags is None: ch4_lags = (-10000.1, -10000.1)
                 if co2_lags is None: co2_lags = (-10000.1, -10000.1)
                 if gas4_lags is None: gas4_lags = (-10000.1, -10000.1)
-                
+
                 h2o_min_lag, h2o_max_lag = h2o_lags
                 co2_min_lag, co2_max_lag = ch4_lags
                 ch4_min_lag, ch4_max_lag = co2_lags
@@ -1927,9 +1927,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else: 
                     assert method in range(5), 'method must be one of None, constant, covariance_maximization_with_default, covariance_maximization, automatic_optimization, or 0, 1, 2, 3, or 4.'
                 if method == 4 or method == 'automatic_optimization':
-                    assert bool(autoopt_file) != bool(autoopt_settings_kwargs), 'If method is automatic_optimization, exactly one of autoopt_file or configure_TimelagAutoOpt_kwargs should be specified.'
+                    assert bool(autoopt_file) != bool(autoopt_settings_kwargs), 'If method is automatic_optimization, exactly one of autoopt_file or autoopt_settings_kwargs should be specified.'
                     if autoopt_settings_kwargs is not None:
-                        assert isinstance(autoopt_settings_kwargs, dict), 'configure_TimelagAutoOpt_kwargs must be None or dict.'
+                        assert isinstance(autoopt_settings_kwargs, dict), 'autoopt_settings_kwargs must be None or dict.'
 
                 method_dict = {
                     'none': 0,
@@ -1976,15 +1976,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     'automatic_optimization']
                 method = methods[int(self.root.get(
                     'RawProcess_Settings', 'tlag_meth'))]
-                configure_TimelagAutoOpt_kwargs = None
+                autoopt_settings_kwargs = None
                 autoopt_file = None
 
                 if method == 'automatic_optimization':
-                    configure_TimelagAutoOpt_kwargs = dict()
+                    autoopt_settings_kwargs = dict()
                     to_subset = int(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_subset'))
                     if not to_subset:
-                        configure_TimelagAutoOpt_kwargs['start'] = 'all_available'
-                        configure_TimelagAutoOpt_kwargs['end'] = 'all_available'
+                        autoopt_settings_kwargs['start'] = 'all_available'
+                        autoopt_settings_kwargs['end'] = 'all_available'
                     else:
                         # dates for autoopt fitting
                         start_date = self.root.get(
@@ -1995,7 +1995,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             start_date = self.root.get('Project', 'pr_start_date')
                         if not start_time:
                             start_time = self.root.get('Project', 'pr_start_time')
-                        configure_TimelagAutoOpt_kwargs['start'] = start_date + \
+                        autoopt_settings_kwargs['start'] = start_date + \
                             ' ' + start_time
                         end_date = self.root.get(
                             'RawProcess_TimelagOptimization_Settings', 'to_end_date')
@@ -2005,36 +2005,36 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             end_date = self.root.get('Project', 'pr_end_date')
                         if not end_time:
                             end_time = self.root.get('Project', 'pr_end_time')
-                        configure_TimelagAutoOpt_kwargs['end'] = end_date + \
+                        autoopt_settings_kwargs['end'] = end_date + \
                             ' ' + end_time
 
-                    configure_TimelagAutoOpt_kwargs['ch4_min_lag'] = self.root.get(
+                    autoopt_settings_kwargs['ch4_min_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_ch4_min_lag')
-                    configure_TimelagAutoOpt_kwargs['ch4_max_lag'] = self.root.get(
+                    autoopt_settings_kwargs['ch4_max_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_ch4_max_lag')
-                    configure_TimelagAutoOpt_kwargs['ch4_min_flux'] = self.root.get(
+                    autoopt_settings_kwargs['ch4_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_ch4_min_flux')
-                    configure_TimelagAutoOpt_kwargs['co2_min_lag'] = self.root.get(
+                    autoopt_settings_kwargs['co2_min_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_co2_min_lag')
-                    configure_TimelagAutoOpt_kwargs['co2_max_lag'] = self.root.get(
+                    autoopt_settings_kwargs['co2_max_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_co2_max_lag')
-                    configure_TimelagAutoOpt_kwargs['co2_min_flux'] = self.root.get(
+                    autoopt_settings_kwargs['co2_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_co2_min_flux')
-                    configure_TimelagAutoOpt_kwargs['gas4_min_lag'] = self.root.get(
+                    autoopt_settings_kwargs['gas4_min_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_gas4_min_lag')
-                    configure_TimelagAutoOpt_kwargs['gas4_max_lag'] = self.root.get(
+                    autoopt_settings_kwargs['gas4_max_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_gas4_max_lag')
-                    configure_TimelagAutoOpt_kwargs['gas4_min_flux'] = self.root.get(
+                    autoopt_settings_kwargs['gas4_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_gas4_min_flux')
-                    configure_TimelagAutoOpt_kwargs['h2o_min_lag'] = self.root.get(
+                    autoopt_settings_kwargs['h2o_min_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_h2o_min_lag')
-                    configure_TimelagAutoOpt_kwargs['h2o_max_lag'] = self.root.get(
+                    autoopt_settings_kwargs['h2o_max_lag'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_h2o_max_lag')
-                    configure_TimelagAutoOpt_kwargs['le_min_flux'] = self.root.get(
+                    autoopt_settings_kwargs['le_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_le_min_flux')
-                    configure_TimelagAutoOpt_kwargs['h2o_nclass'] = self.root.get(
+                    autoopt_settings_kwargs['h2o_nclass'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_h2o_nclass')
-                    configure_TimelagAutoOpt_kwargs['pg_range'] = self.root.get(
+                    autoopt_settings_kwargs['pg_range'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_pg_range')
 
                     manual_mode = int(
@@ -2042,15 +2042,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             'RawProcess_TimelagOptimization_Settings',
                             'to_mode'))
                     if not manual_mode:
-                        for k in configure_TimelagAutoOpt_kwargs:
-                            configure_TimelagAutoOpt_kwargs = None
+                        for k in autoopt_settings_kwargs:
+                            autoopt_settings_kwargs = None
                             autoopt_file = self.root.get(
                                 'RawProcess_TimelagOptimization_Settings', 'to_file')
 
                 return dict(
                     method=method,
                     autoopt_file=autoopt_file,
-                    configure_TimelagAutoOpt_kwargs=configure_TimelagAutoOpt_kwargs)
+                    autoopt_settings_kwargs=autoopt_settings_kwargs)
 
             def _set_burba_coeffs(self, name, estimation_method, coeffs):
                 """helper method called by set_compensationOfDensityFluctuations"""
