@@ -2032,7 +2032,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     )
                     autoopt_settings_kwargs['le_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_le_min_flux')
-                    autoopt_settings_kwargs['h2o_nclass'] = self.root.get(
+                    autoopt_settings_kwargs['n_rh_classes'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_h2o_nclass')
                     autoopt_settings_kwargs['pg_range'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_pg_range')
