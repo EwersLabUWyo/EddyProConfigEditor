@@ -1872,18 +1872,16 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     settings_dict['to_end_date'], settings_dict['to_end_time'] = to_end.split(' ')
                 
                 # lag settings default to "automatic detection" for the value -1000.1
-                settings_with_special_defaults = [
-                    h2o_lags,
-                    ch4_lags,
-                    co2_lags,
-                    gas4_lags]
-                for i, setting in enumerate(settings_with_special_defaults):
-                    if setting is None:
-                        settings_with_special_defaults[i] = (-10000.1, -10000.1)
+                if h2o_lags is None: h2o_lags = (-10000.1, -10000.1)
+                if ch4_lags is None: ch4_lags = (-10000.1, -10000.1)
+                if co2_lags is None: co2_lags = (-10000.1, -10000.1)
+                if gas4_lags is None: gas4_lags = (-10000.1, -10000.1)
+                
                 h2o_min_lag, h2o_max_lag = h2o_lags
                 co2_min_lag, co2_max_lag = ch4_lags
                 ch4_min_lag, ch4_max_lag = co2_lags
                 gas4_min_lag, gas4_max_lag = gas4_lags
+
 
                 settings_dict.update(dict(
                     to_ch4_min_lag=ch4_min_lag,
