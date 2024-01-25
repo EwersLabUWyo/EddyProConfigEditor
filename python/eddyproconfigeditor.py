@@ -2033,6 +2033,24 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         'RawProcess_TimelagOptimization_Settings', 'to_h2o_nclass'))
                     autoopt_settings_kwargs['pg_range'] = float(self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_pg_range'))
+                    
+                    
+                    for i in autoopt_settings_kwargs['co2_lags']: 
+                        if i == -10_000.1: 
+                            autoopt_settings_kwargs['co2_lags'] = None
+                            break
+                    for i in autoopt_settings_kwargs['ch4_lags']: 
+                        if i == -10_000.1: 
+                            autoopt_settings_kwargs['ch4_lags'] = None
+                            break
+                    for i in autoopt_settings_kwargs['h2o_lags']: 
+                        if i == -10_000.1: 
+                            autoopt_settings_kwargs['h2o_lags'] = None
+                            break
+                    for i in autoopt_settings_kwargs['gas4_lags']: 
+                        if i == -10_000.1: 
+                            autoopt_settings_kwargs['gas4_lags'] = None
+                            break
 
                     manual_mode = int(
                         self.root.get(
