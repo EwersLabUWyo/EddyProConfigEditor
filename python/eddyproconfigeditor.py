@@ -2008,28 +2008,28 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         autoopt_settings_kwargs['end'] = end_date + \
                             ' ' + end_time
 
-                    autoopt_settings_kwargs['ch4_min_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_ch4_min_lag')
-                    autoopt_settings_kwargs['ch4_max_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_ch4_max_lag')
+                    autoopt_settings_kwargs['ch4_lags'] = (
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_min_lag'),
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_max_lag')
+                    )
                     autoopt_settings_kwargs['ch4_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_ch4_min_flux')
-                    autoopt_settings_kwargs['co2_min_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_co2_min_lag')
-                    autoopt_settings_kwargs['co2_max_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_co2_max_lag')
+                    autoopt_settings_kwargs['co2_lags'] = (
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_min_lag'),
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_max_lag')
+                    )
                     autoopt_settings_kwargs['co2_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_co2_min_flux')
-                    autoopt_settings_kwargs['gas4_min_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_gas4_min_lag')
-                    autoopt_settings_kwargs['gas4_max_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_gas4_max_lag')
+                    autoopt_settings_kwargs['gas4_lags'] = (
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_min_lag'),
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_max_lag')
+                    )
                     autoopt_settings_kwargs['gas4_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_gas4_min_flux')
-                    autoopt_settings_kwargs['h2o_min_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_h2o_min_lag')
-                    autoopt_settings_kwargs['h2o_max_lag'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_h2o_max_lag')
+                    autoopt_settings_kwargs['h2o_lags'] = (
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_h2o_min_lag'),
+                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_h2o_max_lag')
+                    )
                     autoopt_settings_kwargs['le_min_flux'] = self.root.get(
                         'RawProcess_TimelagOptimization_Settings', 'to_le_min_flux')
                     autoopt_settings_kwargs['h2o_nclass'] = self.root.get(
