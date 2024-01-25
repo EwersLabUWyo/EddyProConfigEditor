@@ -447,7 +447,9 @@ class EddyproConfigEditor(configparser.ConfigParser):
         subset_pf_dates: bool = True,
         subset_sa_dates: bool = True,
         pf_file: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None,
-        sa_dir: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None
+        binned_cosp_dir: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None,
+        autoopt_file: str | PathLike[str] | Sequence[str | PathLike[str]] | None = None,
+
     ) -> None:
         """
         Write this object to a collection of .eddypro files which can be run in parellel. For example, a configuration that tells eddypro to process data from 2019-2024 
@@ -496,7 +498,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
         subset_pf_dates: if True (default), each worker will compute a planar fit only on the dataset allocated to it by the worker window. If False, each worker will compute a planar fit using all data in the raw data directory. This parameter is ignored if a planar fit is not required, or if pf_files are provided. Note that setting to False will drastically increase computation time. Be aware that setting this option to True when worker windows are shorter than 1 month. This option should not be set to true when worker windows are shorter than 2 weeks.
         subset_sa_dates: same as for subset_pf_dates, but for spectral computation. At least one month of data is required for a robust spectral assessment, so this option should not be set to True when each worker window covers less than one month of data.
         pf_file: a single planar fit file or a list of planar fit files to use. If multiple planar fit files are provided, they must match 1:1 onto each worker. This argument overrides pf_subset. This setting is highly recommended in all cases where a planar fit must be used with worker windows of <3 month durations.
-        sa_dir: a directory or a list of directories that contain binned (co)spectra files relevant to this run. Similarly to pf_file, if multiple directories are provided, they much match 1:1 onto each worker. This argument overrides sa_subset. This setting is highly recommended in all cases where a spectral must be used with worker windows of <3 month durations.
+        binned_cosp_dir: a directory or a list of directories that contain binned (co)spectra files relevant to this run. Similarly to pf_file, if multiple directories are provided, they much match 1:1 onto each worker. This argument overrides sa_subset. This setting is highly recommended in all cases where a spectral must be used with worker windows of <3 month durations.
         autoopt_file: a single automatic timelag optimization file or list of such files. If multiple such files are provided, they must match 1:1 onto each worker. This argument overrides autoopt_subset. This setting is highly recommended in all cases where a time lag optimization must be used with worker windows of <3 month durations.
 
         Examples
@@ -584,10 +586,15 @@ class EddyproConfigEditor(configparser.ConfigParser):
             if len(pf_file) == 1: pf_file *= len(worker_windows) - 1
             assert len(pf_file) == len(worker_windows) - 1, 'planar fit files must match 1:1 with workers'
         # make sure that the number of sa files, if provided, matches the number of workers
-        if sa_dir is not None:
-            sa_dir = list(sa_dir)
-            if len(sa_dir) == 1: sa_dir *= len(worker_windows) - 1
-            assert len(sa_dir) == len(worker_windows) - 1, 'spectral analysis directories must match 1:1 with workers'
+        if binned_cosp_dir is not None:
+            binned_cosp_dir = list(binned_cosp_dir)
+            if len(binned_cosp_dir) == 1: binned_cosp_dir *= len(worker_windows) - 1
+            assert len(binned_cosp_dir) == len(worker_windows) - 1, 'spectral analysis directories must match 1:1 with workers'
+        # make sure that the number of autoopt files, if provided, matches the number of workers
+        if autoopt_file is not None:
+            autoopt_file = list(autoopt_file)
+            if len(autoopt_file) == 1: autoopt_file *= len(worker_windows) - 1
+            assert len(autoopt_file) == len(worker_windows) - 1, 'autoopt files must match 1:1 with workers'
         
         #### file organization stuff ####
         # give each project a unique id and file name
@@ -639,8 +646,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 new_sa_settings['start'] = 'project'
                 new_sa_settings['end'] = 'project'
                 self.Adv.Spec.set_calculation(**new_sa_settings)
-            if sa_dir is not None:
-                self.Adv.Spec.set_calculation(binned_cosp_dir=sa_dir[i])
+            if binned_cosp_dir is not None:
+                self.Adv.Spec.set_calculation(binned_cosp_dir=binned_cosp_dir[i])
 
             # modify timelag settings timewindow
             new_timelag_settings = deepcopy(old_timelag_settings)
@@ -652,6 +659,11 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 new_timelag_settings['configure_TimelagAutoOpt_kwargs']['start'] = 'project'
                 new_timelag_settings['configure_TimelagAutoOpt_kwargs']['end'] = 'project'
                 self.Adv.Proc.set_timelag_compensations(**new_timelag_settings)
+            if autoopt_file is not None:
+                new_autoopt_file = fn.parent.parent / 'auto_opt.txt'
+                shutil.copy(autoopt_file[i], new_autoopt_file)
+                method = self.Adv.Proc.get_timelag_compensations()['method']
+                self.Adv.Proc.set_timelag_compensations(method=method, autoopt_file=new_autoopt_file)
 
             # modify planar fit settings time window
             new_tilt_settings = deepcopy(old_tilt_settings)
