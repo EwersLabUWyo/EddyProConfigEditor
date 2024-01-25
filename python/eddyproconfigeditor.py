@@ -35,9 +35,11 @@ Advanced Settings
     * Fix w boost bug
     * AoA correction
     ** Axis rotations for tilt correction
-      * Need to remove "excess" sectors. Ie. if we provide 5 sectors, but 10 exist, we need to remove the extra ones.
+      * DONE Need to remove "excess" sectors. Ie. if we provide 5 sectors, but 10 exist, we need to remove the extra ones.
     ** DONE turbulent fluctuation
-    ** DONE time lag compensations
+    ** time lag compensations
+      * Need to add 'all_available' option.
+
     ** DONE WPL Corrections
         ** DONE Compensate density fluctuations
         ** DONE Burba correction for 7500
@@ -1772,8 +1774,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
             def _configure_timelag_auto_opt(
                 self,
-                start: str | datetime.datetime | Literal['project'] = 'project',
-                end: str | datetime.datetime | Literal['project'] = 'project',
+                start: str | datetime.datetime | Literal['project', 'all_available'] = 'all_available',
+                end: str | datetime.datetime | Literal['project', 'all_available'] = 'all_available',
                 pg_range: float = 1.5,
                 n_rh_classes: int = 10,
                 le_min_flux: float = 20.0,
@@ -1793,7 +1795,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
 
                 Parameters
                 ----------
-                start, end: start and end date-times for time lag optimization computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project"  (default), sets the start/end to the project start/end date. If one of start, end is project, the other must be as well.
+                start, end: start and end date-times for time lag optimization computation. If a string, must be in yyyy-mm-dd HH:MM format or "project." If "project" , sets the start/end to the project start/end date. If 'all_available', sets the start/end to all available data. If one of start, end is project, the other must be as well, and likewise for all_available
                 pg_range: the number of median absolute deviations from the mean a time lag can be for a given class to be accepted. Default mean±1.5mad
                 n_rh_classes: the number of relative humidity classes to consider when optimizing H2O time lags
                 XXX_min_flux: the minimum flux for a given gas, quantity, in µmol/m2/2, except for le_min_flux, which is in units of W/m2
@@ -1814,13 +1816,17 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 assert or_isinstance(start, str, datetime.datetime), 'starting timestamp must be string or datetime.datetime'
                 assert or_isinstance(end, str, datetime.datetime), 'ending timestamp must be string or datetime.datetime'
                 if isinstance(start, str):
-                    assert len(start) == 16 or start == 'project', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    assert len(start) == 16 or start == 'project' or start == 'all_available', 'if start is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project" or "all_available"'
                     if start == 'project':
                         assert end == 'project', 'if one of start, end is "project", the other must be as well.'
+                    if start == 'all_available':
+                        assert end == 'all_available', 'if one of start, end is "all_available", the other must be as well.'
                 if isinstance(end, str):
-                    assert len(end) == 16 or end == 'project', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project"'
+                    assert len(end) == 16 or end == 'project' or end == 'all_available', 'if end is a string, it must be a timestamp of the form YYYY-mm-dd HH:MM or "project" or "all_available"'
                     if end == 'project':
                         assert start == 'project', 'if one of start, end is "project", the other must be as well.'
+                    if end == 'all_available':
+                        assert end == 'all_available', 'if one of start, end is "all_available", the other must be as well.'
                 assert or_isinstance(pg_range, float, int) and in_range(pg_range, '[0.1, 100]'), f'pg_range must be float or int and between 0.1 and 100'
                 assert or_isinstance(n_rh_classes, int) and in_range(n_rh_classes, '[1, 20]'), f'h2o_nclass must be int and between 1 and 20'
                 assert or_isinstance(le_min_flux, float, int) and in_range(le_min_flux, '[0, 1000]'), f'le_min_flux must be float or int and in range [0, 1000]'
@@ -1834,10 +1840,18 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         assert v[0] < v[1], f'time lag search window must have positive width. Received {k}={v}.'
                 
                 settings_dict = dict()
-                # process dates
+                # process dates:
                 settings_dict['to_subset'] = 1
-                if start == 'project':
-                    settings_dict['to_subset'] = 0
+
+                if start == 'all_available': settings_dict['to_subset'] = 0
+                elif start == 'project':
+                    # user could ask for project dates, but if the project dates are set to all_available, then we should 
+                    # apply that to the timelag settings too
+                    proj_start = self.root.Proj.get_project_start_date()
+                    if proj_start != 'all_available':
+                        settings_dict['to_start_date'], settings_dict['to_start_time'] = proj_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
+                    else:
+                        settings_dict['to_subset'] = 0
                 elif isinstance(start, datetime.datetime):
                     to_start = start
                     settings_dict['to_start_date'], settings_dict['to_start_time'] = to_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
@@ -1845,8 +1859,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     to_start = start
                     settings_dict['to_start_date'], settings_dict['to_start_time'] = to_start.split(' ')
 
-                if end == 'project':
-                    pass
+                if end == 'all_available': pass  # already handled with start
+                elif end == 'project': pass  # already handled with start
                 elif isinstance(end, datetime.datetime):
                     to_end = end
                     settings_dict['to_end_date'], settings_dict['to_end_time'] = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
@@ -1883,7 +1897,6 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     to_le_min_flux=le_min_flux,
                     to_h2o_nclass=int(n_rh_classes),
                     to_pg_range=pg_range,
-                    to_subset=to_subset
                 ))
 
                 return settings_dict
@@ -1969,8 +1982,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     configure_TimelagAutoOpt_kwargs = dict()
                     to_subset = int(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_subset'))
                     if not to_subset:
-                        configure_TimelagAutoOpt_kwargs['start'] = 'project'
-                        configure_TimelagAutoOpt_kwargs['end'] = 'project'
+                        configure_TimelagAutoOpt_kwargs['start'] = 'all_available'
+                        configure_TimelagAutoOpt_kwargs['end'] = 'all_available'
                     else:
                         # dates for autoopt fitting
                         start_date = self.root.get(
