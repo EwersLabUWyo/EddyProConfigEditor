@@ -1847,7 +1847,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 elif start == 'project':
                     # user could ask for project dates, but if the project dates are set to all_available, then we should 
                     # apply that to the timelag settings too
-                    proj_start = self.root.Basic.get_project_start_date()
+                    proj_start = self.root.Basic.get_project_start_date()['start']
                     if proj_start != 'all_available':
                         settings_dict['to_start_date'], settings_dict['to_start_time'] = proj_start.strftime(r'%Y-%m-%d %H:%M').split(' ')
                     else:
@@ -1860,7 +1860,10 @@ class EddyproConfigEditor(configparser.ConfigParser):
                     settings_dict['to_start_date'], settings_dict['to_start_time'] = to_start.split(' ')
 
                 if end == 'all_available': pass  # already handled with start
-                elif end == 'project': pass  # already handled with start
+                elif end == 'project':
+                    proj_end = self.root.Basic.get_project_end_date()['end']
+                    if proj_end != 'all_available':
+                        settings_dict['to_end_date'], settings_dict['to_end_time'] = proj_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
                 elif isinstance(end, datetime.datetime):
                     to_end = end
                     settings_dict['to_end_date'], settings_dict['to_end_time'] = to_end.strftime(r'%Y-%m-%d %H:%M').split(' ')
