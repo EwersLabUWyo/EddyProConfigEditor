@@ -2009,33 +2009,30 @@ class EddyproConfigEditor(configparser.ConfigParser):
                             ' ' + end_time
 
                     autoopt_settings_kwargs['ch4_lags'] = (
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_min_lag'),
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_max_lag')
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_min_lag')),
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_max_lag'))
                     )
-                    autoopt_settings_kwargs['ch4_min_flux'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_ch4_min_flux')
+                    autoopt_settings_kwargs['ch4_min_flux'] = float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_ch4_min_flux'))
                     autoopt_settings_kwargs['co2_lags'] = (
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_min_lag'),
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_max_lag')
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_min_lag')),
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_max_lag'))
                     )
-                    autoopt_settings_kwargs['co2_min_flux'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_co2_min_flux')
+                    autoopt_settings_kwargs['co2_min_flux'] = float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_co2_min_flux'))
                     autoopt_settings_kwargs['gas4_lags'] = (
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_min_lag'),
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_max_lag')
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_min_lag')),
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_max_lag'))
                     )
-                    autoopt_settings_kwargs['gas4_min_flux'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_gas4_min_flux')
+                    autoopt_settings_kwargs['gas4_min_flux'] = float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_gas4_min_flux'))
                     autoopt_settings_kwargs['h2o_lags'] = (
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_h2o_min_lag'),
-                        self.root.get('RawProcess_TimelagOptimization_Settings', 'to_h2o_max_lag')
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_h2o_min_lag')),
+                        float(self.root.get('RawProcess_TimelagOptimization_Settings', 'to_h2o_max_lag'))
                     )
-                    autoopt_settings_kwargs['le_min_flux'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_le_min_flux')
-                    autoopt_settings_kwargs['n_rh_classes'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_h2o_nclass')
-                    autoopt_settings_kwargs['pg_range'] = self.root.get(
-                        'RawProcess_TimelagOptimization_Settings', 'to_pg_range')
+                    autoopt_settings_kwargs['le_min_flux'] = float(self.root.get(
+                        'RawProcess_TimelagOptimization_Settings', 'to_le_min_flux'))
+                    autoopt_settings_kwargs['n_rh_classes'] = int(self.root.get(
+                        'RawProcess_TimelagOptimization_Settings', 'to_h2o_nclass'))
+                    autoopt_settings_kwargs['pg_range'] = float(self.root.get(
+                        'RawProcess_TimelagOptimization_Settings', 'to_pg_range'))
 
                     manual_mode = int(
                         self.root.get(
