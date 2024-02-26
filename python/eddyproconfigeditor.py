@@ -1601,8 +1601,8 @@ class EddyproConfigEditor(configparser.ConfigParser):
                         # this solves the problem of 5 sectors already existing, but the user only provides ones, resulting in
                         # more sectors that the user specified or invalid sectors.
                         for i in range(1, 17):
-                            self.root.remove_option('RawProcess_WindDirectionFilter', f'pf_sect_{i}_exclude')
-                            self.root.remove_option('RawProcess_WindDirectionFilter', f'pf_sect_{i}_width')
+                            self.root.remove_option('RawProcess_TiltCorrection_Settings', f'pf_sect_{i}_exclude')
+                            self.root.remove_option('RawProcess_TiltCorrection_Settings', f'pf_sect_{i}_width')
                         # now we add the planar fit settings, including sector information.
                         for option, value in pf_settings.items():
                             self.root.set(

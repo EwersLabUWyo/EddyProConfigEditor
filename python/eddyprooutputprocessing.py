@@ -255,13 +255,15 @@ def read_single_binned_cospectrum_file(fn) -> pd.DataFrame:
     
     return df
 
-def read_binned_cospectra(directory, parallel=False, return_xarray=False, return_pandas=True):
+def read_binned_cospectra(directory, parallel=False, return_xarray=False, return_pandas=True, subset=None)->tuple:
     """
     read all cospectrum files from a single output directory
     
     Parameters
     ----------
-    directory: the output directory that contains the eddypro_binned_cospectra directory"""
+    directory: the output directory that contains the eddypro_binned_cospectra directory
+    subset: how to filter dates/times. Provide a list of datetimes.
+    """
     if not parallel:
         files = sorted(Path(directory).glob('eddypro_binned_cospectra/*_binned_cospectra_*.csv'))
         print(files)
@@ -269,48 +271,59 @@ def read_binned_cospectra(directory, parallel=False, return_xarray=False, return
         files = sorted(Path(directory).glob('*/eddypro_binned_cospectra/*_binned_cospectra_*.csv'))
     if len(files) > 10_000:
         print(f'WARNING: {len(files)} detected. Outputs could exceed 100MB unless date filtering is applied.')
+    if subset is not None:
+        dates = [d.strftime(r'%Y%m%d-%H%M') for d in subset]
+        files = [f for f in files if f.name.split('_')[0] in dates]
+        print(f'Reading {len(files)} detected after date filtering.')
+        print('test')
     df = [pd.DataFrame()]*len(files)
     for i, fn in tqdm(enumerate(files), total=len(files)):
         timestamp = datetime.strptime(fn.name.split('_')[0], r'%Y%m%d-%H%M')
         idf = read_single_binned_cospectrum_file(fn)
         idf['date_time'] = timestamp
-        idf['primary_key'] = fn.parent.name
+        idf['run_id'] = fn.parent.name
         df[i] = idf
 
     df = pd.concat(df)
 
     if return_xarray:
-        ds = xr.Dataset.from_dataframe(df.set_index(['date_time', 'natural_frequency', 'primary_key']))
+        ds = xr.Dataset.from_dataframe(df.set_index(['date_time', 'natural_frequency', 'run_id']))
     if return_pandas and return_xarray: return df, ds
     elif return_pandas: return df, None
     else: return None, ds
 
-def read_binned_ogives(directory, parallel=False, return_xarray=False, return_pandas=True):
+def read_binned_ogives(directory, parallel=False, return_xarray=False, return_pandas=True, subset=None)->tuple:
     """
     read all cospectrum files from a single output directory
     
     Parameters
     ----------
-    directory: the output directory that contains the eddypro_binned_cospectra directory"""
+    directory: the output directory that contains the eddypro_binned_ogives directory
+    subet: list of datetimes to specify exactly which files to pull out"""
     if not parallel:
-        files = sorted(Path(directory).glob('eddypro_binned_ogives/*_binned_ogives_*.csv'))
+        files = sorted(Path(directory).glob('eddypro_binned_cospectra/*_binned_ogives_*.csv'))
         print(files)
     else:
-        files = sorted(Path(directory).glob('*/eddypro_binned_ogives/*_binned_ogives_*.csv'))
+        files = sorted(Path(directory).glob('*/eddypro_binned_cospectra/*_binned_ogives_*.csv'))
     if len(files) > 10_000:
         print(f'WARNING: {len(files)} detected. Outputs could exceed 100MB unless date filtering is applied.')
+    if subset is not None:
+        dates = [d.strftime(r'%Y%m%d-%H%M') for d in subset]
+        files = [f for f in files if f.name.split('_')[0] in dates]
+        print(f'Reading {len(files)} detected after date filtering.')
+        print('test')
     df = [pd.DataFrame()]*len(files)
     for i, fn in tqdm(enumerate(files), total=len(files)):
         timestamp = datetime.strptime(fn.name.split('_')[0], r'%Y%m%d-%H%M')
         idf = read_single_binned_cospectrum_file(fn)
         idf['date_time'] = timestamp
-        idf['primary_key'] = fn.parent.name
+        idf['run_id'] = fn.parent.name
         df[i] = idf
 
     df = pd.concat(df)
 
     if return_xarray:
-        ds = xr.Dataset.from_dataframe(df.set_index(['date_time', 'natural_frequency', 'primary_key']))
+        ds = xr.Dataset.from_dataframe(df.set_index(['date_time', 'natural_frequency', 'run_id']))
     if return_pandas and return_xarray: return df, ds
     elif return_pandas: return df, None
     else: return None, ds
