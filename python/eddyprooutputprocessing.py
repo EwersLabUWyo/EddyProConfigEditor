@@ -221,6 +221,17 @@ def read_single_planar_fit(fn) -> tuple[dict, pd.DataFrame, np.array]:
     pf_coefs['numerosity'] = pf_coefs['numerosity'].astype(int)
     pf_coefs = pf_coefs.where(pf_coefs != -9999)
 
+    pf_coefs = (
+        pd.wide_to_long(
+            pf_coefs, 
+            stubnames='B', 
+            i='WindSector', 
+            j='Coefficient'
+        )
+        .reset_index()
+        .rename(columns=dict(B='value'))
+    )
+
     return params, pf_coefs, matrices
 
 def read_single_binned_cospectrum_file(fn) -> pd.DataFrame:

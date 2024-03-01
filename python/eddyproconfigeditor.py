@@ -991,7 +991,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 static = self.root.get('Project', 'proj_file')
             
             if self.root.get('Project', 'use_dyn_md_file') == '1':
-                dynamic = self.root.get('dyn_metadata_file')
+                dynamic = self.root.get('Project', 'dyn_metadata_file')
             else:
                 dynamic = False
             return dict(static=static, dynamic=dynamic)
