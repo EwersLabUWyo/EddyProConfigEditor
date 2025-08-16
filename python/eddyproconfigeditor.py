@@ -2123,7 +2123,7 @@ class EddyproConfigEditor(configparser.ConfigParser):
                 else:
                     self.root.set('Project', 'wpl_meth', '1')
 
-                if burba_method is None:
+                if burba_method is None or burba_method == False:
                     self.root.set('RawProcess_Settings', 'bu_corr', '0')
                     if (
                         isinstance(day_bot, Sequence)
